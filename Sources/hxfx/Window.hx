@@ -1,6 +1,13 @@
 package hxfx;
 
 import kha.input.Mouse;
+import js.Browser;
+
+/**
+Need to get debug going - canvas is being drawn from the bottom up, don't understand how/why (something hidden in Kha)
+Rebuild so window resize is event driven, turn off FrameEvent loop when not needed
+**/
+
 
 /**
 Starting point of a HAF application, create or extend this class to begin
@@ -55,6 +62,8 @@ class Window implements IBindable {
         System.notifyOnApplicationState(onForeground, onResume, onPause, onBackground, onShutdown);
 		System.notifyOnResize(onResize);
 		System.notifyOnRender(render);
+		windowSize.width = System._windowWidth;
+		windowSize.height = System._windowHeight;
 		initialized = true;
 
 		// Begin rendering
@@ -81,9 +90,11 @@ class Window implements IBindable {
 		mouse = new hxfx.core.data.Mouse(windowId);
 	}
 
-	public function onResize() {
-		windowSize.width = System.windowWidth(windowId);
-		windowSize.height = System.windowHeight(windowId);
+	public function onResize(width:Int, height:Int) {
+		//windowSize.width = System.windowWidth(windowId);
+		//windowSize.height = System.windowHeight(windowId);
+		windowSize.width = width;
+		windowSize.height = height;
     }
 
 	public function onForeground() {

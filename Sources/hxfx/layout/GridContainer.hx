@@ -48,6 +48,16 @@ class GridContainer extends NodeBase {
 				}
 			}
 		}
+
+		System.renderNextFrame = true;
+	}
+
+	public function getChild(x:Int, y:Int):NodeBase {
+		if(x>=0 && x<_xColCount && y>=0 && y<_yColCount) {
+			var index = (y * _xColCount) + x;
+			return _gridNodes[index];
+		}
+		return null;
 	}
 
 	public function setChild(child:NodeBase, x:Int, y:Int) {

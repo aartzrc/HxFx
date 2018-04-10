@@ -1,6 +1,7 @@
 package hxfx;
 
 import hxfx.core.NodeBase;
+import hxfx.core.data.Mouse;
 
 /**
 Each Window has a Stage, this is the root level display canvas that fills the view area
@@ -13,11 +14,17 @@ class Stage extends NodeBase {
 	var window:Window;
 
 	public function new(window:Window) {
-		super();
-
 		this.window = window;
-
+		
+		super();
+		
 		Bind.bindAll(window.windowSize, doWindowSizeChange);
+		Bind.bind(window.mouse, attachMouse);
+	}
+
+	private function attachMouse(from:Mouse, to:Mouse) {
+		this.mouseData = this.window.mouse.mouseData;
+		Bind.bindAll(mouseData, _doMouseChanged);
 	}
 
 	private function doWindowSizeChange(name: String, from:Dynamic, to:Dynamic) {

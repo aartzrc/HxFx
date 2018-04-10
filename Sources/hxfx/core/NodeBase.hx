@@ -15,6 +15,11 @@ class NodeBase implements IBindable  {
 	public var layout:Layout;
 	public var backgroundColor:Color = Color.White;
 
+	public var mouseData:MouseData = null;
+	public var mouseSubscribe:Bool = false;
+	public var mouseInBounds:Bool = false;
+	public var mouseListeners:Array<NodeBase> = new Array<NodeBase>();
+
 	private var _childNodes:Array<NodeBase> = [];
 	public var parent:NodeBase;
 	// Should each child track its position within the parent? or should the parent be in charge of this?
@@ -28,6 +33,23 @@ class NodeBase implements IBindable  {
 		layout = new Layout();
 		Bind.bind(this.layout, doLayoutChange);
 		Bind.bind(this.parent, doParentChange);
+		Bind.bind(this.mouseSubscribe, doMouseSubscribe);
+	}
+
+	private function doMouseSubscribe(from: Bool, to: Bool) {
+		if(mouseData == null) {
+			mouseData = new MouseData();
+			Bind.bindAll(mouseData, _doMouseChanged);
+		}
+		if(to) {
+			if(parent != null) {
+				parent.addMouseListener(this);
+			}
+		} else {
+			if(parent != null) {
+				parent.removeMouseListener(this);
+			}
+		}
 	}
 
 	private function doParentPropertyChange(name: String, from:Dynamic, to:Dynamic) {
@@ -40,18 +62,65 @@ class NodeBase implements IBindable  {
 		_doLayout();
 	}
 
+	public function addMouseListener(child:NodeBase) {
+		if(_childNodes.indexOf(child) != -1 && mouseListeners.indexOf(child) == -1) {
+			if(mouseData == null) {
+				mouseData = new MouseData();
+			}
+			Bind.bindAll(mouseData, _doMouseChanged);
+			mouseListeners.push(child);
+			if(parent != null) {
+				parent.addMouseListener(this);
+			}
+		}
+	}
+
+	public function _doMouseChanged(name:String, from:Dynamic, to:Dynamic) {
+		for(l in mouseListeners) {
+			l.mouseData.x = mouseData.x - l.relativePosition.left;
+			l.mouseData.y = mouseData.y - l.relativePosition.top;
+			l.mouseData.xd = mouseData.xd;
+			l.mouseData.yd = mouseData.yd;
+			l.mouseData.b1down = mouseData.b1down;
+			l.mouseData.b2down = mouseData.b2down;
+			l.mouseData.b3down = mouseData.b3down;
+			l.mouseData.wheeld = mouseData.wheeld;
+			l.mouseData.wheel = mouseData.wheel;
+			l.mouseData.mouseInWindow = mouseData.mouseInWindow;
+		}
+
+		if(mouseData.x>=0 && mouseData.x<=size.width && mouseData.y>=0 && mouseData.y<=size.height) {
+			mouseInBounds = true;
+		} else {
+			mouseInBounds = false;
+		}
+	}
+
+	public function removeMouseListener(child:NodeBase) {
+		mouseListeners.remove(child);
+		if(mouseListeners.length == 0 && !this.mouseSubscribe) {
+			Bind.unbindAll(mouseData);
+		}
+	}
+
 	private function doParentChange(from:NodeBase, to:NodeBase) {
 		if(from != null) {
 			var thisRect:Rect = new Rect({ position: { left: 0, top: 0 }, size: { width: this.size.width, height: this.size.height } });
 			from.redrawRects([thisRect]);
 			from.removeNode(this);
 			Bind.unbindAll(from);
+			if(from.mouseListeners.indexOf(this) != -1) {
+				from.removeMouseListener(this);
+			}
 		}
 		
 		// TODO: review assign parent vs add/removeNode - some overlap here
 		to.addNode(this);
 		Bind.bindAll(to, doParentPropertyChange);
 		_doLayout();
+		if(mouseListeners.length > 0) {
+			to.addMouseListener(this);
+		}
 		// TODO: maybe call parent redrawRects?
 	}
 
