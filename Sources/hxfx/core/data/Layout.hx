@@ -17,7 +17,7 @@ class Layout implements IBindable  {
 	public var marginBottomFixed: Float;
 
 	public var alignWidth: Float;
-	public var aligneHeight: Float;
+	public var alignHeight: Float;
 
 	public function new() {
 	}
