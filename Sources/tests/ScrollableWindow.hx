@@ -3,6 +3,7 @@ package tests;
 import hxfx.Window;
 import hxfx.layout.*;
 
+// Nothing working here, scroll bars not implemented
 class ScrollableWindow extends Window {
 
 	public static function main() {

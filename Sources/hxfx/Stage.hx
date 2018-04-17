@@ -27,8 +27,8 @@ class Stage extends NodeBase {
 		Bind.bindAll(mouseData, _doMouseChanged);
 	}
 
-	private function doWindowSizeChange(name: String, from:Dynamic, to:Dynamic) {
-		this.size = new Size({ width: window.windowSize.width, height: window.windowSize.height });
+	private function doWindowSizeChange(origin:IBindable, name: String, from:Dynamic, to:Dynamic) {
+		this.size = new Size({ w: window.windowSize.w, h: window.windowSize.h });
 	}
 
 	override public function redrawRects(rectArray:Array<Rect>) {

@@ -1,20 +1,20 @@
 package hxfx.core.data;
 
 typedef PositionDef = {
-	?left:Float,
-	?top:Float
+	?x:Float,
+	?y:Float
 }
 
 @:bindable
 class Position implements IBindable  {
-	public var left:Float = 0;
-	public var top:Float = 0;
+	public var x:Float = 0;
+	public var y:Float = 0;
 
 	public function new(position:PositionDef) {
-		if(position.left != null)
-			this.left = position.left;
+		if(position.x != null)
+			this.x = position.x;
 
-		if(position.top != null)
-			this.top = position.top;
+		if(position.y != null)
+			this.y = position.y;
 	}
 }

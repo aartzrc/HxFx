@@ -1,20 +1,20 @@
 package hxfx.core.data;
 
 typedef SizeDef = {
-	?width:Float,
-	?height:Float
+	?w:Float,
+	?h:Float
 }
 
 @:bindable
 class Size implements IBindable  {
-	public var width:Float = 0;
-	public var height:Float = 0;
+	public var w:Float = 0;
+	public var h:Float = 0;
 
 	public function new(size:SizeDef) {
-		if(size.width != null)
-			this.width = size.width;
+		if(size.w != null)
+			this.w = size.w;
 
-		if(size.height != null)
-			this.height = size.height;
+		if(size.h != null)
+			this.h = size.h;
 	}
 }

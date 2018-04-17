@@ -60,8 +60,8 @@ class DualGridWindow extends Window implements IBindable {
 	}
 
 	var draggingNode = false;
-	public function childMouseMove(name:String, from:Dynamic, to:Dynamic) {
-		trace(name + " : " + to);
+	public function childMouseMove(origin:IBindable, name:String, from:Dynamic, to:Dynamic) {
+		//trace(name + " : " + to);
 		if(watchChild.mouseData.b1down && watchChild.mouseInBounds) {
 			percentGrid.gridNodeColorOdd = kha.Color.fromFloats(0,1,0,.15);
 			draggingNode = true;

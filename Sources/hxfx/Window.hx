@@ -23,7 +23,7 @@ class Window implements IBindable {
 	public var mouse:hxfx.core.data.Mouse;
 
 	public function new(appTitle:String) {
-		windowSize = new Size({ width: 1024, height: 768 });
+		windowSize = new Size({ w: 1024, h: 768 });
 
 		// Default options
 		var windowModeOptions:WindowedModeOptions = {
@@ -38,8 +38,8 @@ class Window implements IBindable {
 		};
 
 		var windowOptions:WindowOptions = {
-			width : cast windowSize.width,
-			height : cast windowSize.height,
+			width : cast windowSize.w,
+			height : cast windowSize.h,
 			mode : WindowMode.Window,
 			title : appTitle,
 			windowedModeOptions : windowModeOptions,
@@ -62,8 +62,8 @@ class Window implements IBindable {
         System.notifyOnApplicationState(onForeground, onResume, onPause, onBackground, onShutdown);
 		System.notifyOnResize(onResize);
 		System.notifyOnRender(render);
-		windowSize.width = System._windowWidth;
-		windowSize.height = System._windowHeight;
+		windowSize.w = System._windowWidth;
+		windowSize.h = System._windowHeight;
 		initialized = true;
 
 		// Begin rendering
@@ -93,8 +93,8 @@ class Window implements IBindable {
 	public function onResize(width:Int, height:Int) {
 		//windowSize.width = System.windowWidth(windowId);
 		//windowSize.height = System.windowHeight(windowId);
-		windowSize.width = width;
-		windowSize.height = height;
+		windowSize.w = width;
+		windowSize.h = height;
     }
 
 	public function onForeground() {

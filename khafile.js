@@ -8,6 +8,6 @@ project.addLibrary('bindx2');
 //project.addParameter('-main tests.FixedGridWindow');
 //project.addParameter('-main tests.DualGridWindow');
 //project.addParameter('-main tests.ScrollableWindow');
-project.addParameter('-main tests.SimpleWindow');
+project.addParameter('-main tests.ComponentWindow');
 
 resolve(project);
