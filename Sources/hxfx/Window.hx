@@ -117,4 +117,26 @@ class Window implements IBindable {
         trace("Shutdown");
     }
 
+	var cursorStack:Array<String> = new Array<String>();
+
+	public function setCursor(cursorName:String) {
+		var useCursorName:String = null;
+
+		if(cursorName == null) {
+			cursorStack.pop();
+		} else {
+			cursorStack.push(cursorName);
+		}
+
+		// Grab the last cursor from the stack
+		if(cursorStack.length>0) {
+			useCursorName = cursorStack[cursorStack.length - 1];
+		}
+
+		// Cursor change needs to be handled per target, maybe push in to Kha?
+		#if js
+		js.Browser.window.document.getElementsByTagName("canvas")[0].style.cursor = useCursorName;
+		#end
+	}
+
 }

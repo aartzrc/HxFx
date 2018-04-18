@@ -28,9 +28,10 @@ class Stage extends NodeBase {
 	}
 
 	private function doWindowSizeChange(origin:IBindable, name: String, from:Dynamic, to:Dynamic) {
-		this.size = new Size({ w: window.windowSize.w, h: window.windowSize.h });
+		layoutToSize(new Size({ w: window.windowSize.w, h: window.windowSize.h }));
 	}
 
+	/*
 	override public function redrawRects(rectArray:Array<Rect>) {
 		_redrawRects.concat(rectArray);
 
@@ -39,11 +40,22 @@ class Stage extends NodeBase {
 		// Possibly bind invalidRects at Window level to renderNextFrame?
 		System.renderNextFrame = true;
 	}
+	*/
 
-	override public function render(g2:Graphics) {
-		super.render(g2);
-
-		// Clear the old array, any better way to manage this?
-		_redrawRects = new Array<Rect>();
+	override private function _childPropertyChanged(origin:IBindable, name:String, from:Dynamic, to:Dynamic) {
+		super._childPropertyChanged(origin, name, from, to);
+		if(name == "redrawRequested") {
+			var child = cast(origin, NodeBase);
+			// redrawRequested change
+			if(to == true) {
+				// NodeBase has merged redraw rects for us, we just need to tell the render engine to do its thing
+				System.renderNextFrame = true;
+			}
+		}
+	}
+	
+	override public function setCursor(cursorName:String) {
+		// Tell Window to change the cursor
+		window.setCursor(cursorName);
 	}
 }

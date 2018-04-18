@@ -36,7 +36,7 @@ class Mouse implements IBindable  {
 		mouseData.y=m2;
 		mouseData.xd=m3;
 		mouseData.yd=m4;
-		mouseData.mouseInWindow = true;
+		mouseData.mouseInBounds = true;
 	}
 
 	public function wheelListener(w1:Int) {
@@ -47,6 +47,6 @@ class Mouse implements IBindable  {
 
 	public function leaveListener() {
 		//trace("leave");
-		mouseData.mouseInWindow = false;
+		mouseData.mouseInBounds = false;
 	}
 }

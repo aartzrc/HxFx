@@ -18,6 +18,10 @@ class ComponentWindow extends Window {
 	}
 
 	override function onInit() {
+
+		/*
+		letter = new Glyph();
+
 		trace("Loading Arial.ttf");
 		//Assets.loadEverything(function()
 		Assets.loadFont("arial", function(loaded:Font)
@@ -25,7 +29,9 @@ class ComponentWindow extends Window {
 			//arial = Assets.fonts.ARIALUNI;
 			arial = Assets.fonts.arial;
 			// Assets loaded, try render
+			letter.font = arial;
 			System.renderNextFrame = true;
+			trace("Font loaded: Render");
 		});
 		super.onInit();
 
@@ -36,25 +42,26 @@ class ComponentWindow extends Window {
 		emptyDisplay.layout.widthPercent = 100;
 		emptyDisplay.layout.marginLeftFixed = 20;
 		emptyDisplay.layout.marginTopFixed = 20;
-
+		*/
 		/*text = new Text();
 		text.text = "test";
 		text.parent = emptyDisplay;*/
-		var letter = new Glyph();
-		letter.glyph = "A";
+		/*letter.glyph = "A";
 		letter.parent = emptyDisplay;
 
 		emptyDisplay.parent = stage;
 
-		//kha.Scheduler.addTimeTask(randomTextChange, 0, 4, 10);
+		kha.Scheduler.addTimeTask(randomTextChange, 0, 4, 10);*/
 	}
-
+	/*
 	public function randomTextChange() {
 		//trace("rand..");
-		text.text += String.fromCharCode(Std.random(26)+65);
+		//text.text += String.fromCharCode(Std.random(26)+65);
+		var newSize = Std.random(5);
+		letter.fontSize = newSize;
 
 		//trace(text.characterRects);
 	}
 
-	
+	*/
 }
