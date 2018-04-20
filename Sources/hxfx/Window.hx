@@ -1,16 +1,11 @@
 package hxfx;
 
 import kha.input.Mouse;
+import kha.input.Keyboard;
 import js.Browser;
 
 /**
-Need to get debug going - canvas is being drawn from the bottom up, don't understand how/why (something hidden in Kha)
-Rebuild so window resize is event driven, turn off FrameEvent loop when not needed
-**/
-
-
-/**
-Starting point of a HAF application, create or extend this class to begin
+Starting point of a HxFx application, create or extend this class to begin
 Window provides an interface between Kha (hardware access) and the Stage (root level display)
 All components are attached to the Stage scene graph and updates happen based on bindings (bindx2)
 **/
@@ -21,6 +16,7 @@ class Window implements IBindable {
 	var stage:Stage;
 	public var windowSize:Size;
 	public var mouse:hxfx.core.data.Mouse;
+	public var keyboard:hxfx.core.data.Keyboard;
 
 	public function new(appTitle:String) {
 		windowSize = new Size({ w: 1024, h: 768 });
@@ -90,6 +86,7 @@ class Window implements IBindable {
         windowId = winId;
 
 		mouse = new hxfx.core.data.Mouse(windowId);
+		keyboard = new hxfx.core.data.Keyboard();
 	}
 
 	public function onResize(width:Int, height:Int) {

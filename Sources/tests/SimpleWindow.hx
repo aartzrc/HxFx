@@ -2,7 +2,6 @@ package tests;
 
 import hxfx.Window;
 import hxfx.layout.*;
-import hxfx.core.data.LayoutRule;
 import hxfx.widget.*;
 
 import kha.*;
@@ -20,7 +19,7 @@ class SimpleWindow extends Window {
 
 		Assets.loadFont("arial", function(arial:Font)
 		{
-			text.setLayoutRule(LayoutRule.Font(arial));
+			text.setFontRule(FontRule.Font(arial));
 		});
 
 		// Any way to block the array from modification?
@@ -42,7 +41,7 @@ class SimpleWindow extends Window {
 		text.text = "testing 1234 ...";
 		//text.text = "test";
 		text.setLayoutRule(Color(kha.Color.Red));
-		text.setLayoutRule(FontSize(50));
+		text.setFontRule(FontSize(50));
 		//text.setLayoutRule(HAlign(Align.PercentMiddle(50)));
 		//text.setLayoutRule(HAlign(Align.FixedLT(10)));
 		text.setLayoutRule(VAlign(Align.PercentMiddle(50)));
@@ -65,5 +64,7 @@ class SimpleWindow extends Window {
 		} else {
 			text.text += randString.charAt(pos);
 		}
+
+		trace(text.text);
 	}
 }

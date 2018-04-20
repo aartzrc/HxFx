@@ -2,6 +2,8 @@ package hxfx;
 
 import hxfx.core.NodeBase;
 import hxfx.core.data.Mouse;
+import hxfx.core.data.Keyboard;
+import kha.input.KeyCode;
 
 /**
 Each Window has a Stage, this is the root level display canvas that fills the view area
@@ -12,6 +14,7 @@ class Stage extends NodeBase {
 	
 	var _redrawRects = new Array<Rect>();
 	var window:Window;
+	var currentFocus:NodeBase;
 
 	public function new(window:Window) {
 		this.window = window;
@@ -20,12 +23,26 @@ class Stage extends NodeBase {
 		
 		Bind.bindAll(window.windowSize, doWindowSizeChange);
 		Bind.bind(window.mouse, attachMouse);
+		Bind.bind(window.keyboard, attachKeyboard);
 		Bind.bind(this.layoutIsValid, _layoutIsValid_Changed);
 	}
 
 	private function attachMouse(from:Mouse, to:Mouse) {
 		this.mouseData = this.window.mouse.mouseData;
 		Bind.bindAll(mouseData, _doMouseChanged);
+	}
+
+	private function attachKeyboard(from:Keyboard, to:Keyboard) {
+		Bind.bind(to.keysDown, _keysDownListener);
+		Bind.bind(to.keyPress, _keyPressListener);
+	}
+
+	private function _keysDownListener(from:List<KeyCode>, to:List<KeyCode>) {
+		_keysDownChange(window.keyboard.keysDown);
+	}
+
+	private function _keyPressListener(from:String, to:String) {
+		_keyPressed(to);
 	}
 
 	private function doWindowSizeChange(origin:IBindable, name: String, from:Dynamic, to:Dynamic) {

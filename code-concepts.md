@@ -12,24 +12,37 @@ NodeBase is used to subscribe to events. When the 'subscribe' boolean is true, t
 
 TODO: key events, only propagate to 'focused' child?
 
-Each Node handles it's own internal layout, but position and size of each node is handled by the parent.
+Each Node handles it's own internal layout and size. Position and overflow of child nodes is handled by the parent.
 
 TODO: Parents need to tell children what space they have available, but children sometimes need to tell a parent what size they want to be. How to handle this? A 'minimum size' property of the child would handle most of it.
+- Currently resolved by providing the child with available layout space, child decides on a final size (which can be larger than the layout space).
+- Positioning becomes difficult if the child is larger than layout space and the parent 'stretches'. What to do with relative/percent based position and sizes?
+	As parent size changes the child would adjust too, causing a feedback loop...
 
 TODO: Can a node have more than one parent? this would be useful instead of cloning nodes between parents, but would also get difficult to manage
+- Currently a child can have only one parent. However a cached image of a child could be stored and displayed to improve render performance (wrap a shared canvas inside each child, when the cached canvas changes it would display across all child nodes without needing a redraw each time)
 
 TODO: CSS/style updates based on binding callbacks - how to manage a style update, and how should styles/layout be determined internally. My guess is that each component would need to have custom code to interpret style settings, so a universal or function callback system to handle styles would not work. It would be great to have styles be a Haxe enum type, but then customized styles would be a problem because they would need to be compiled into the style enum (maybe a workaround for this?)
 
 TODO: How to add effects? Render loop draws parent then children, so a drop shadow would need to be a parent, which works but gets confusing. Maybe a pre-render child list and a post-render child list so an effect could be drawn before the parent.
+- The mouse in bounds and content outline can be the same, but the in bounds checking should be done with multiple shapes to allow more complexity and create drop shadows that better match the real shape. For example a rounded-corner container needs a drop shadown and in-bounds (hitbox) that matches. Make the in bounds checking based on all children combined, and allow rect, triangle, circle as the core bounds checking - this should allow enought complexity without slowing down bounds check much (polygon/beizer would be too slow?)
 
 Note to self: Text should be in blocks to allow the font to handle layout properly. I had originally considered breaking Text into individual chars/glyphs and each would handle it's own layout, but this breaks the internal kerning/etc of the font (each char is unaware of it's neighbors). A 'word processor' type app would need to manage breaking text apart if parts of it became styled differently - not going down that rabbit hole for now :)
 
 Goal #1: create an editable text field
-	1. Create a Text node that can display characters
-	2. Get character locations of the Text node
-	3. Capture mouse position and highlight characters
-	4. Capture up/down click and perform highlighting
+X	1. Create a Text node that can display characters
+X	2. Get character locations of the Text node
+X	3. Capture mouse position and highlight characters
+X	4. Capture up/down click and perform highlighting
+	- click without drag needs to set cursor position
 	5. Capture keyboard to handle text field changes and special commands
 	6. Capture right-click - need a way to do a popup box...
 
 TODO: How to handle redraw requests with current binding model? Problem is that modifying redraw area array or setting a flag fires the callback immediately, but all layout changes should be calculated before the final render call happens.
+ - this is handled by layout and then render paths:
+The basic concept is:
+1. A child changes (added to parent, layout change, some other update)
+2. The node is marked layoutIsValid=false, the parent listens and propagates up the stack
+3. At some point a fixed size container is reached (Window, Dialog, etc) - this fixed size container then blocks propagation and calls layoutToSize down the stack
+4. When all layoutToSize calls complete the child will set layoutIsValid to true, which triggers the fixed size container to push a dirty rectangle up the stack
+5. At the top of the stack (window/stage), the dirty rectangle is accepted and render engine processes

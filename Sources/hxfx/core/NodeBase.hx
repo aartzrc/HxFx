@@ -1,5 +1,7 @@
 package hxfx.core;
 
+import kha.input.KeyCode;
+
 /**
 Root level class for a Display Node
 The basic concept is:
@@ -22,9 +24,11 @@ class NodeBase implements IBindable  {
 	public var scale:Float = 1; // 96 dpi default?
 	@:bindable
 	public var cull:Bool; // Use for render culling, render updates won't be passed through - not implemented
+	@:bindable
+	public var focused:Bool = false; // Used to trace current focus path - keyboard events will feed down the focus path, similar to mouseSubscribe but for keyboard
 	@:bindable(force)
 	// Review layout system - use a rule/override system with bindings to some top level objects to reproduce css type updates?
-	public var layoutRules(default,null):Array<LayoutRule>;
+	public var layoutRules(default,null):Array<BaseRule>;
 
 	@:bindable
 	public var mouseData:MouseData = null;
@@ -43,7 +47,7 @@ class NodeBase implements IBindable  {
 	public function new() {
 		size = new Size({});
 		layoutSize = new Size({});
-		layoutRules = new Array<LayoutRule>();
+		layoutRules = new Array<BaseRule>();
 		redrawRects = new Array<Rect>();
 		//Bind.bind(this.layoutRules, _layoutRulesChange);
 		Bind.bind(this.parent, _parentChange);
@@ -100,13 +104,13 @@ class NodeBase implements IBindable  {
 		// Position is handled by the parent!
 		for(rule in node.layoutRules) {
 			switch(rule) {
-				case LayoutRule.Width(LayoutSize.Fixed(v)):
+				case BaseRule.Width(LayoutSize.Fixed(v)):
 					newSize.w = v;
-				case LayoutRule.Width(LayoutSize.Percent(v)):
+				case BaseRule.Width(LayoutSize.Percent(v)):
 					newSize.w = layoutSize.w*(v/100);
-				case LayoutRule.Height(LayoutSize.Fixed(v)):
+				case BaseRule.Height(LayoutSize.Fixed(v)):
 					newSize.h = v;
-				case LayoutRule.Height(LayoutSize.Percent(v)):
+				case BaseRule.Height(LayoutSize.Percent(v)):
 					newSize.h = layoutSize.h*(v/100);
 				case _:
 					// Ignore rules we don't know how to handle
@@ -134,21 +138,21 @@ class NodeBase implements IBindable  {
 			// Child has determined how big it wants to be, now position it based on rules available
 			for(rule in child.layoutRules) {
 				switch(rule) {
-					case LayoutRule.HAlign(Align.PercentMiddle(v)):
+					case BaseRule.HAlign(Align.PercentMiddle(v)):
 						childPos.x = (size.w-child.size.w) * (v/100);
-					case LayoutRule.VAlign(Align.PercentMiddle(v)):
+					case BaseRule.VAlign(Align.PercentMiddle(v)):
 						childPos.y = (size.h-child.size.h) * (v/100);
-					case LayoutRule.HAlign(Align.FixedLT(v)):
+					case BaseRule.HAlign(Align.FixedLT(v)):
 						childPos.x = v;
-					case LayoutRule.VAlign(Align.FixedLT(v)):
+					case BaseRule.VAlign(Align.FixedLT(v)):
 						childPos.y = v;
-					case LayoutRule.HAlign(Align.FixedM(v)):
+					case BaseRule.HAlign(Align.FixedM(v)):
 						childPos.x = -(child.size.w / 2) + v;
-					case LayoutRule.VAlign(Align.FixedM(v)):
+					case BaseRule.VAlign(Align.FixedM(v)):
 						childPos.y = -(child.size.h / 2) + v;
-					case LayoutRule.HAlign(Align.FixedRB(v)):
+					case BaseRule.HAlign(Align.FixedRB(v)):
 						childPos.x = -child.size.w + v;
-					case LayoutRule.VAlign(Align.FixedRB(v)):
+					case BaseRule.VAlign(Align.FixedRB(v)):
 						childPos.y = -child.size.h + v;
 					case _:
 						// Ignore rules we don't know how to handle
@@ -176,6 +180,8 @@ class NodeBase implements IBindable  {
 		_childNodes.push(childNode);
 		_childPositions.set(childNode, new Position({x:0, y:0}));
 		Bind.bind(childNode.layoutIsValid, _childLayoutIsValidChanged);
+		Bind.bind(childNode.focused, _childFocusedChanged);
+		if(childNode.focused) this.focused = true;
 		layoutIsValid = false; // Notify my parent that I have changed
 	}
 
@@ -186,6 +192,8 @@ class NodeBase implements IBindable  {
 
 		_childPositions.remove(childNode);
 		Bind.unbind(childNode.layoutIsValid, _childLayoutIsValidChanged);
+		Bind.unbind(childNode.layoutIsValid, _childFocusedChanged);
+		if(childNode.focused) this.focused = false;
 
 		// If child is a mouse listener, detach
 		if(_mouseListeners.indexOf(childNode) != -1) {
@@ -198,17 +206,22 @@ class NodeBase implements IBindable  {
 
 	private function _childLayoutIsValidChanged(from:Bool, to:Bool) {
 		// Propagate up stack by default - a fixed size container (window/dialog/etc) up the stack can override this and begin layout call back down stack (see Stage for an example)
-		layoutIsValid = false;
+		if(!to) layoutIsValid = false;
 	}
 
-	public function setLayoutRule(newRule:LayoutRule) {
+	private function _childFocusedChanged(from:Bool, to:Bool) {
+		// Propagate up stack - the top level container will pass keyboard events down 'focused' chain
+		this.focused = to;
+	}
+
+	public function setLayoutRule(newRule:BaseRule) {
 		// TODO: check for other rules that should be removed during this update
 		layoutRules.push(newRule);
 		// Return previous rule if one was removed?
 
 		// If cursor is changing to non-default begin listening to mouse
 		switch(newRule) {
-			case LayoutRule.Cursor(cursorName):
+			case BaseRule.Cursor(cursorName):
 				mouseSubscribe = true;
 				// Watch mouse and adjust cursor
 				bindx.Bind.bind(this.mouseData.mouseInBounds, _updateCursor);
@@ -224,7 +237,7 @@ class NodeBase implements IBindable  {
 		} else {
 			for(r in layoutRules) {
 				switch(r) {
-					case LayoutRule.Cursor(cursorName):
+					case BaseRule.Cursor(cursorName):
 						parent.setCursor(cursorName);
 					case _:
 						// Ignore other rules
@@ -308,6 +321,26 @@ class NodeBase implements IBindable  {
 		}
 	}
 
+	private function _keysDownChange(keysDown:List<KeyCode>) {
+		// Look for the child with focus
+		for(c in _childNodes) {
+			if(c.focused) {
+				c._keysDownChange(keysDown);
+				return;
+			}
+		}
+	}
+
+	private function _keyPressed(k:String) {
+		// Look for the child with focus
+		for(c in _childNodes) {
+			if(c.focused) {
+				c._keyPressed(k);
+				return;
+			}
+		}
+	}
+
 	public function render(g2: Graphics): Void {
 		// Draw myself - clear to my background color
 		// TODO: this should only clear invalid rects for the area within this node
@@ -315,7 +348,7 @@ class NodeBase implements IBindable  {
 		var bgColor = kha.Color.Transparent;
 		for(r in layoutRules) {
 			switch(r) {
-				case LayoutRule.BackgroundColor(c):
+				case BaseRule.BackgroundColor(c):
 					bgColor = c;
 				case _:
 					// Ignore other rules
@@ -338,4 +371,37 @@ class NodeBase implements IBindable  {
 			g2.popTransformation();
 		}
 	}
+}
+
+/** 
+Use 'standard' 12pt, 16px, 1em, 100% size concept at 96dpi? - for example: https://websemantics.uk/articles/font-size-conversion/
+All font sizes are based on this, font size is float - 1.0 == 1em size
+Width/height sizes are same, 1.0 float == 16px
+**/
+
+enum BaseRule {
+	// Position/size
+	Width(v:LayoutSize);
+	HAlign(v:Align);
+	Height(v:LayoutSize);
+	VAlign(v:Align);
+	
+	// Color
+	BackgroundColor(c:Color);
+	Color(c:Color);
+
+	// Cursor/pointer - in html target, this pushes to the DOM - see cursor names here: https://www.w3schools.com/cssref/playit.asp?filename=playcss_cursor&preval=copy
+	Cursor(name:String);
+}
+
+enum LayoutSize {
+	Fixed(v:Float);
+	Percent(v:Float);
+}
+
+enum Align {
+	FixedLT(v:Float); // Left or top edge of node is in a fixed position
+	FixedM(v:Float); // Middle of node is in a fixed position
+	FixedRB(v:Float); //Right or bottom edge of node is in a fixed position
+	PercentMiddle(v:Float); // Middle of node is a percent position from left of layout area
 }
