@@ -35,6 +35,9 @@ class Stage extends NodeBase {
 	private function attachKeyboard(from:Keyboard, to:Keyboard) {
 		Bind.bind(to.keysDown, _keysDownListener);
 		Bind.bind(to.keyPress, _keyPressListener);
+		to.cutCallback = this.cutListener;
+		to.copyCallback = this.copyListener;
+		to.pasteCallback = this.pasteListener;
 	}
 
 	private function _keysDownListener(from:List<KeyCode>, to:List<KeyCode>) {

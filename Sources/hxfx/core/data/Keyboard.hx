@@ -10,6 +10,10 @@ class Keyboard implements IBindable  {
 	@:bindable
 	public var keyPress:String;
 	
+	public var cutCallback:Dynamic;
+	public var copyCallback:Dynamic;
+	public var pasteCallback:Dynamic;
+	
 	public function new(?keyboardNum:Int) {
 		keysDown = new List<KeyCode>();
 
@@ -41,17 +45,19 @@ class Keyboard implements IBindable  {
 	}
 
 	public function cutListener():String {
-		trace("cut");
-		return "";
+		if(cutCallback != null)
+			return cutCallback();
+		return null;
 	}
 
 	public function copyListener():String {
-		trace("copy");
-		return "";
+		if(copyCallback != null)
+			return copyCallback();
+		return null;
 	}
 
 	public function pasteListener(paste:String) {
-		trace("paste");
-		trace(paste);
+		if(pasteCallback != null)
+			pasteCallback(paste);
 	}
 }

@@ -341,6 +341,36 @@ class NodeBase implements IBindable  {
 		}
 	}
 
+	private function cutListener():String {
+		// Look for the child with focus
+		for(c in _childNodes) {
+			if(c.focused) {
+				return c.cutListener();
+			}
+		}
+		return null;
+	}
+
+	private function copyListener():String {
+		// Look for the child with focus
+		for(c in _childNodes) {
+			if(c.focused) {
+				return c.copyListener();
+			}
+		}
+		return null;
+	}
+
+	private function pasteListener(paste:String) {
+		// Look for the child with focus
+		for(c in _childNodes) {
+			if(c.focused) {
+				c.pasteListener(paste);
+				return;
+			}
+		}
+	}
+
 	public function render(g2: Graphics): Void {
 		// Draw myself - clear to my background color
 		// TODO: this should only clear invalid rects for the area within this node

@@ -17,7 +17,10 @@ class SimpleWindow extends Window {
 	override function onInit() {
 		super.onInit();
 
-		Assets.loadFont("arial", function(arial:Font)
+		//Assets.loadFont("Kroftsmann", function(arial:Font)
+		//Assets.loadFont("DejaVuSansMono", function(arial:Font)
+		Assets.loadFont("arialsmall", function(arial:Font)
+		//Assets.loadFont("arial", function(arial:Font)
 		{
 			text.setFontRule(FontRule.Font(arial));
 		});
@@ -38,7 +41,10 @@ class SimpleWindow extends Window {
 		//block.setLayoutRule(Cursor("pointer"));
 
 		text = new TextField();
-		text.text = "testing 1234 ...";
+		//text.text = "testing 1234 ...";ГД
+		//text.text = "xxГДxx中文xx";
+		text.text = "Get the currently highlighted text";
+		trace(text.text);
 		//text.text = "test";
 		text.setLayoutRule(Color(kha.Color.Red));
 		text.setFontRule(FontSize(50));

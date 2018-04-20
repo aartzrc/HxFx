@@ -6,7 +6,7 @@ class Mouse implements IBindable  {
 
 	public function new(windowId:Int) {
 		// Start input listeners
-		var khaMouse = kha.input.Mouse.get();
+		var khaMouse = kha.input.Mouse.get(windowId);
 		//trace(khaMouse);
 		khaMouse.notifyWindowed(windowId, downListener, upListener, moveListener, wheelListener, leaveListener);
 		mouseData = new MouseData();

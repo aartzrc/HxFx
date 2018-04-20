@@ -53,6 +53,10 @@ class Window implements IBindable {
 		stage.setLayoutRule(Width(Percent(100)));
 		stage.setLayoutRule(Height(Percent(100)));
 
+#if debug
+		mouse = new hxfx.core.data.Mouse(windowId);
+		keyboard = new hxfx.core.data.Keyboard();
+#end
 		// Load assets?
 
 		// Set up callbacks
@@ -84,9 +88,10 @@ class Window implements IBindable {
 
 	public function windowCallback(winId:Int) {
         windowId = winId;
-
+#if !debug
 		mouse = new hxfx.core.data.Mouse(windowId);
 		keyboard = new hxfx.core.data.Keyboard();
+#end
 	}
 
 	public function onResize(width:Int, height:Int) {

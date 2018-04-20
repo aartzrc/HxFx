@@ -19,6 +19,8 @@ class TextField extends Text {
 	var _cursorBlinkTask:Int = -1;
 	var _cursorBlinkState:Bool = false;
 
+	public static var wordWrapCharacters:Array<Int> = [32, 189]; // Space, dash
+
 	public function new() {
 		super();
 
@@ -115,6 +117,11 @@ class TextField extends Text {
 
 	override private function _keyPressed(k:String) {
 		if(k == null) return; // Ignore key up event
+		
+		if(highlighted) {
+			_spliceText(_startHighlightChar, _endHighlightChar);
+		}
+
 		// Update text
 		if(_cursorPos >= 0 && _cursorPos <= text.length) {
 			var s1 = text.substr(0, _cursorPos);
@@ -125,39 +132,224 @@ class TextField extends Text {
 	}
 
 	override private function _keysDownChange(keysDown:List<KeyCode>) {
-		// Capture keys
-		//trace(keysDown);
-		var render = false;
-		if(_cursorPos >= 0 && _cursorPos <= text.length) {
+		// Capture 'chord' combinations
+		var control = false;
+		var shift = false;
+		var alt = false;
+		
+		// TODO: WordWrap positions could be stored during charCodes update instead of the seek routines...
+
+		for(k in keysDown) {
+			switch(k) {
+				case KeyCode.Control:
+					control = true;
+				case KeyCode.Shift:
+					shift = true;
+				case KeyCode.Alt:
+					alt = true;
+				case _:
+					// Any other things to track?
+			}
+		}
+		
+		if(highlighted) {
 			for(k in keysDown) {
 				switch(k) {
-					case KeyCode.Left:
+					case KeyCode.Left if (control && shift): // Ctrl + shift + left
+						if(_startHighlightChar == -1 ) _startHighlightChar = _cursorPos;
+						var _newPos = _cursorPos-2;
+						while(_newPos>=0 && wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos--;
+						if(_newPos<0) _newPos = 0;
+							else _newPos++;
+						_cursorPos = _newPos;
+						_endHighlightChar = _cursorPos;
+						_cursorBlinkState = true;
+					case KeyCode.Right if (control && shift): // Ctrl + shift + right
+						if(_startHighlightChar == -1 ) _startHighlightChar = _cursorPos;
+						var _newPos = _cursorPos+1;
+						while(_newPos<=charCodes.length && wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos++;
+						if(_newPos>charCodes.length) _newPos = charCodes.length;
+						_cursorPos = _newPos;
+						_endHighlightChar = _cursorPos;
+						_cursorBlinkState = true;
+					case KeyCode.Left if (shift): // Shift + left
+						if(_startHighlightChar == -1 ) _startHighlightChar = _cursorPos;
 						if(_cursorPos>0) _cursorPos--;
+						_endHighlightChar = _cursorPos;
 						_cursorBlinkState = true;
-						render = false;
-					case KeyCode.Right:
+					case KeyCode.Right if (shift): // Shift + right
+						if(_startHighlightChar == -1 ) _startHighlightChar = _cursorPos;
 						if(_cursorPos<text.length) _cursorPos++;
+						_endHighlightChar = _cursorPos;
 						_cursorBlinkState = true;
-						render = true;
+					case KeyCode.Left:
+						if(_startHighlightChar<_endHighlightChar) _cursorPos = _startHighlightChar;
+							else _cursorPos = _endHighlightChar;
+						clearHighlight();
+						_cursorBlinkState = true;
+					case KeyCode.Right:
+						if(_startHighlightChar>_endHighlightChar) _cursorPos = _startHighlightChar;
+							else _cursorPos = _endHighlightChar;
+						clearHighlight();
+						_cursorBlinkState = true;
 					case KeyCode.Backspace:
-						if(_cursorPos>0) {
-							var s1 = text.substr(0, _cursorPos-1);
-							var s2 = text.substr(_cursorPos);
-							text = s1 + s2;
-							_cursorPos--;
-						}
+						_spliceText(_startHighlightChar, _endHighlightChar);
 					case KeyCode.Delete:
-						if(_cursorPos<text.length) {
-							var s1 = text.substr(0, _cursorPos);
-							var s2 = text.substr(_cursorPos+1);
-							text = s1 + s2;
-						}
+						_spliceText(_startHighlightChar, _endHighlightChar);
+					case KeyCode.A if (control): // Select all
+						_startHighlightChar = 0;
+						_endHighlightChar = text.length;
 					case _:
 						// Any other things to track?
-						trace(k);
+						//trace(k);
+				}
+			}
+		} else {
+			if(_cursorPos >= 0 && _cursorPos <= text.length) {
+				// Check for other single keys
+				for(k in keysDown) {
+					switch(k) {
+						case KeyCode.Left if (control && shift): // Ctrl + shift + left
+							_startHighlightChar = _cursorPos;
+							var _newPos = _cursorPos-2;
+							while(_newPos>=0 && wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos--;
+							if(_newPos<0) _newPos = 0;
+								else _newPos++;
+							_cursorPos = _newPos;
+							_endHighlightChar = _cursorPos;
+							_cursorBlinkState = true;
+						case KeyCode.Right if (control && shift): // Ctrl + shift + right
+							_startHighlightChar = _cursorPos;
+							var _newPos = _cursorPos+1;
+							while(_newPos<=charCodes.length && wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos++;
+							if(_newPos>charCodes.length) _newPos = charCodes.length;
+							_cursorPos = _newPos;
+							_endHighlightChar = _cursorPos;
+							_cursorBlinkState = true;
+						case KeyCode.Left if (shift): // Shift + left
+							if(_startHighlightChar == -1 ) _startHighlightChar = _cursorPos;
+							if(_cursorPos>0) _cursorPos--;
+							_endHighlightChar = _cursorPos;
+							_cursorBlinkState = true;
+						case KeyCode.Left if (control): // Ctrl + left
+							var _newPos = _cursorPos-2;
+							while(_newPos>=0 && wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos--;
+							if(_newPos<0) _newPos = 0;
+								else _newPos++;
+							_cursorPos = _newPos;
+							_cursorBlinkState = true;
+						case KeyCode.Right if (shift): // Shift + right
+							if(_startHighlightChar == -1 ) _startHighlightChar = _cursorPos;
+							if(_cursorPos<text.length) _cursorPos++;
+							_endHighlightChar = _cursorPos;
+							_cursorBlinkState = true;
+						case KeyCode.Right if (control): // Ctrl + right
+							var _newPos = _cursorPos+1;
+							while(_newPos<=charCodes.length && wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos++;
+							if(_newPos>charCodes.length) _newPos = charCodes.length;
+							_cursorPos = _newPos;
+							_cursorBlinkState = true;
+						case KeyCode.Left:
+							if(_cursorPos>0) _cursorPos--;
+							_cursorBlinkState = true;
+						case KeyCode.Right:
+							if(_cursorPos<text.length) _cursorPos++;
+							_cursorBlinkState = true;
+						case KeyCode.Backspace:
+							_spliceText(_cursorPos-1, _cursorPos);
+						case KeyCode.Delete:
+							_spliceText(_cursorPos, _cursorPos+1);
+						case KeyCode.A if (control): // Select all
+							_startHighlightChar = 0;
+							_endHighlightChar = text.length;
+						case _:
+							// Any other things to track?
+							//trace(k);
+					}
 				}
 			}
 		}
+	}
+
+	private function _spliceText(start:Int, end:Int):String {
+		var s = start;
+		var e = end;
+		if(e<s) {
+			s = end;
+			e = start;
+		}
+		if(s>=0 && e<=text.length) {
+			var s1 = text.substr(0, s);
+			var s2 = text.substr(e);
+			var s3 = text.substring(s, e);
+			text = s1 + s2;
+
+			if(_cursorPos>s)
+				_cursorPos-=s3.length; // Move the cursor to position to follow removed text
+
+			if(_cursorPos<0) _cursorPos = 0;
+			if(_cursorPos>text.length) _cursorPos = text.length;
+
+			// Clear highlight
+			clearHighlight();
+
+			return s3;
+		}
+
+		return null;
+	}
+
+	override private function cutListener():String {
+		// Remove and return the text
+		var cutText:String = null;
+		
+		if(highlighted) {
+			cutText = _spliceText(_startHighlightChar, _endHighlightChar);
+		}
+
+		// Send back the currently selected text
+		return cutText;
+	}
+
+	override private function copyListener():String {
+		var copyText:String = null;
+		// Get the currently highlighted text
+		if(highlighted) {
+			var s = _startHighlightChar;
+			var e = _endHighlightChar;
+			if(_endHighlightChar<s) {
+				s = _endHighlightChar;
+				e = _startHighlightChar;
+			}
+			if(highlighted) {
+				copyText = text.substring(_startHighlightChar, _endHighlightChar);
+			}
+		}
+		// Send back the currently selected text
+		return copyText;
+	}
+
+	override private function pasteListener(paste:String) {
+		if(highlighted) {
+			_spliceText(_startHighlightChar, _endHighlightChar);
+		}
+
+		// Insert new text
+		var s1 = text.substr(0, _cursorPos);
+		var s2 = text.substr(_cursorPos);
+
+		text = s1 + paste + s2;
+	}
+
+	public var highlighted(get,never):Bool;
+
+	private function get_highlighted() {
+		return (_startHighlightChar != _endHighlightChar && _startHighlightChar >= 0 && _endHighlightChar >= 0 && _startHighlightChar <= charCodes.length && _endHighlightChar <= charCodes.length);
+	}
+
+	public function clearHighlight() {
+		_startHighlightChar = -1;
+		_endHighlightChar = -1;
 	}
 
 	override public function render(g2: Graphics): Void {
@@ -171,7 +363,7 @@ class TextField extends Text {
 				s = _endHighlightChar;
 				e = _startHighlightChar;
 			}
-			if(_startHighlightChar >= 0 && _endHighlightChar >= 0 && _startHighlightChar < characterRects.length && _endHighlightChar < characterRects.length) {
+			if(highlighted) {
 				g2.color = kha.Color.fromFloats(0,0,0,.4);
 				
 				var sR = characterRects[s];
