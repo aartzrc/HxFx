@@ -17,4 +17,10 @@ class Rect implements IBindable  {
 		position = new Position(rect.position);
 		size = new Size(rect.size);
 	}
+
+	public function inBounds(loc:Position) {
+		var xRelative = loc.x - position.x;
+		var yRelative = loc.y - position.y;
+		return (xRelative >= 0 && xRelative <= size.w && yRelative >= 0 && yRelative <= size.h);
+	}
 }

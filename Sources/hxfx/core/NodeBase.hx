@@ -2,25 +2,28 @@ package hxfx.core;
 
 /**
 Root level class for a Display Node
-Add/remove child nodes
-All children will receive messages?
-All children will get render call?
+The basic concept is:
+1. A child changes (added to parent, layout change, some other update)
+2. The node is marked layoutIsValid=false, the parent listens and propagates up the stack
+3. At some point a fixed size container is reached (Window, Dialog, etc) - this fixed size container then blocks propagation and calls layoutToSize down the stack
+4. When all layoutToSize calls complete the child will set layoutIsValid to true, which triggers the fixed size container to push a dirty rectangle up the stack
+5. At the top of the stack (window/stage), the dirty rectangle is accepted and render engine processes
 **/
 class NodeBase implements IBindable  {
 	@:bindable(force)
-	public var minSize(default,null):Size; // This is the minimum size this node wants to be - the parent can decide to make it smaller and handle overflow
+	public var layoutSize(default, null):Size; // This is the last size this node was told to use for layout purposes (set during layoutToSize() call)
 	@:bindable(force)
-	public var layoutSize(default, null):Size; // This is the last size this node was told to use for layout purposed (set during layoutToSize() call)
+	public var size(default, null):Size; // This is the current actual size of the node - calculated by the node during layoutToSize
 	@:bindable
-	public var redrawRequested:Bool = false;
+	public var layoutIsValid:Bool = true; // Used to check if current layout is valid - set to true in layoutToSize()
 	@:bindable
 	public var parent:NodeBase;
 	@:bindable
-	public var scale:Float = 1; // 96 dpi default
+	public var scale:Float = 1; // 96 dpi default?
 	@:bindable
-	public var cull:Bool; // Use for render culling, render updates won't be passed through
+	public var cull:Bool; // Use for render culling, render updates won't be passed through - not implemented
 	@:bindable(force)
-	// Rethink layout - use a rule/override system with bindings to some top level objects to reproduce css type updates?
+	// Review layout system - use a rule/override system with bindings to some top level objects to reproduce css type updates?
 	public var layoutRules(default,null):Array<LayoutRule>;
 
 	@:bindable
@@ -28,16 +31,17 @@ class NodeBase implements IBindable  {
 	@:bindable
 	public var mouseSubscribe:Bool = false;
 
-	private var mouseListeners:Array<NodeBase> = new Array<NodeBase>();
-	private var _childNodes = new Array<Layout.ChildNode>();
+	private var _mouseListeners:Array<NodeBase> = new Array<NodeBase>(); // Children of this node that are listening for mouse events
+	private var _childNodes = new Array<NodeBase>();
+	private var _childPositions = new Map<NodeBase, Position>(); // Position lookup map
 
 	public var redrawRects(default,null):Array<Rect>; // Use addRedrawRect() call to add redrawrects
 
 	/* note, empty constructor was chosen so that instances could be initialized before parent was assigned
-	assigning parent causes a full invalid rect to be pushed, set all initial values before assigning parent to avoid invalid rect duplication
+	assigning parent causes layout/etc to happen, set all initial values before assigning parent to avoid extra layout calls
 	*/
 	public function new() {
-		minSize = new Size({});
+		size = new Size({});
 		layoutSize = new Size({});
 		layoutRules = new Array<LayoutRule>();
 		redrawRects = new Array<Rect>();
@@ -48,143 +52,109 @@ class NodeBase implements IBindable  {
 
 	private function _parentChange(from:NodeBase, to:NodeBase) {
 		if(from != null) {
-			// Remove myself from the previous parent (parent.removeNode will unbind)
+			// Remove myself from the previous parent (parent.removeNode will unbind and remove mouse listener)
 			from.removeNode(this);
 			// Unbind from the parent
 			Bind.unbindAll(from);
-			// If I'm a mouse listener, detach
-			if(from.mouseListeners.indexOf(this) != -1) {
-				from.removeMouseListener(this);
-			}
 		}
 		
 		// Add myself to the parent (parent.addNode will bind)
 		to.addNode(this);
 		// Do I have any mouse listeners to manage, or am I subscribing to mouse events? Tell my new parent
-		if(mouseListeners.length > 0 || mouseSubscribe) {
+		if(_mouseListeners.length > 0 || mouseSubscribe) {
 			to.addMouseListener(this);
 		}
 	}
 
 	/**
 	Do calculations and pass sizes to children.
-	The size passed is the available space for this node, this node will then use LayoutRules to calculate it's size within the given space
+	The size passed is the available space for this node, this node will then use LayoutRules or other custom code to calculate it's size within the given space
 	**/
-	public function layoutToSize(size:Size):Bool {
-		if(layoutSize == size) return false; // Already at this size
-
-		// Determine what size I want to be based on my layout rules
-		// Position is handled by the parent!
-		for(rule in layoutRules) {
-			switch(rule) {
-				case LayoutRule.Width(LayoutSize.Fixed(v)):
-					size.w = v;
-				case LayoutRule.Width(LayoutSize.Percent(v)):
-					size.w*=(v/100);
-				case LayoutRule.Height(LayoutSize.Fixed(v)):
-					size.h = v;
-				case LayoutRule.Height(LayoutSize.Percent(v)):
-					size.h*=(v/100);
-				case _:
-					// Ignore rules we don't know how to handle
-					//trace(rule);
-			}
+	public function layoutToSize(newLayoutSize:Size, force:Bool = false):Bool {
+		if(layoutSize == newLayoutSize && layoutIsValid && !force) {
+			return false; // Already at this size and layout is valid, no update needed
 		}
 
-		// Update the size I will use
-		layoutSize = _calcSize(size);
+		layoutSize = newLayoutSize;
 
-		// Notify my parent that I need to be redrawn
-		addRedrawRect(new Rect({position: { x: 0, y:0 }, size:{ w: layoutSize.w, h: layoutSize.h }}));
+		// Update the size this node will use for display
+		size = _calcSize(newLayoutSize);
 
-		// Update my children
-		_recalcChildLayout();
+		// Update my children based on the final size calculated
+		_calcChildLayout();
 
-		// TODO: update minSize - how to handle children minSize combinations?
+		// Parent listenes to layoutIsValid switching to true and calls render engine to update display
+		layoutIsValid = true;
 
 		return true;
 	}
-
+	
 	/**
-	Calculate my size based on the available space provided by the parent
+	Calculate node size based on the available space provided by the parent
 	Override this call for subclasses that have specific size rules
 	**/
-	private function _calcSize(size:Size) {
+	public static function calcSize(node:NodeBase, layoutSize:Size) {
+		var newSize = new Size({w:0, h:0});
 
 		// Determine what size I want to be based on my layout rules
 		// Position is handled by the parent!
-		for(rule in layoutRules) {
+		for(rule in node.layoutRules) {
 			switch(rule) {
 				case LayoutRule.Width(LayoutSize.Fixed(v)):
-					size.w = v;
+					newSize.w = v;
 				case LayoutRule.Width(LayoutSize.Percent(v)):
-					size.w*=(v/100);
+					newSize.w = layoutSize.w*(v/100);
 				case LayoutRule.Height(LayoutSize.Fixed(v)):
-					size.h = v;
+					newSize.h = v;
 				case LayoutRule.Height(LayoutSize.Percent(v)):
-					size.h*=(v/100);
+					newSize.h = layoutSize.h*(v/100);
 				case _:
 					// Ignore rules we don't know how to handle
 					//trace(rule);
 			}
 		}
 
-		return size;
+		return newSize;
 	}
 
-	private function addNode(childNode:NodeBase):Void {
-		// Check if child is already attached
-		if(_childIndex(childNode) != -1) return;
-
-		var emptyRect = new Rect({position: {x:0, y:0}, size: {w:0, h:0}});
-		_childNodes.push({child:childNode, rect:emptyRect});
-		Bind.bindAll(childNode, _childPropertyChanged);
-		if(_recalcChildLayout()) {
-			//trace("HERE");
-			//childNode.redrawRequested = true;
-		}
+	private function _calcSize(layoutSize:Size) {
+		return calcSize(this, layoutSize);
 	}
 
-	private function _recalcChildLayout():Bool {
-		// Recalc child sizes and positions - by default give all children full view of the container
-		var redraw = false;
-		var allRect = new Rect({position: {x:0, y:0}, size: {w:layoutSize.w, h:layoutSize.h}});
-		for(cn in _childNodes) {
-			if(cn.rect != allRect) {
-				cn.rect = allRect;
-				if(cn.child.layoutToSize(cn.rect.size)) redraw = true;
+	/**
+	Determine child sizes and positions - by default give all children full view of the container and ignore children being larger/outside parent boundaries
+	Override this call for subclasses that have specific layout rules
+	**/
+	private function _calcChildLayout() {
+		for(child in _childNodes) {
+			child.layoutToSize(new Size({w:size.w, h:size.h}));
 
-				// Child has determined how big it wants to be, now position it based on rules available
-				for(rule in cn.child.layoutRules) {
-					switch(rule) {
-						case LayoutRule.HAlign(Align.PercentMiddle(v)):
-							cn.rect.position.x = (layoutSize.w-cn.child.layoutSize.w) * (v/100);
-						case LayoutRule.VAlign(Align.PercentMiddle(v)):
-							cn.rect.position.y = (layoutSize.h-cn.child.layoutSize.h) * (v/100);
-						case _:
-							// Ignore rules we don't know how to handle
-							//trace(rule);
-					}
+			var childPos = _childPositions.get(child);
+
+			// Child has determined how big it wants to be, now position it based on rules available
+			for(rule in child.layoutRules) {
+				switch(rule) {
+					case LayoutRule.HAlign(Align.PercentMiddle(v)):
+						childPos.x = (size.w-child.size.w) * (v/100);
+					case LayoutRule.VAlign(Align.PercentMiddle(v)):
+						childPos.y = (size.h-child.size.h) * (v/100);
+					case LayoutRule.HAlign(Align.FixedLT(v)):
+						childPos.x = v;
+					case LayoutRule.VAlign(Align.FixedLT(v)):
+						childPos.y = v;
+					case LayoutRule.HAlign(Align.FixedM(v)):
+						childPos.x = -(child.size.w / 2) + v;
+					case LayoutRule.VAlign(Align.FixedM(v)):
+						childPos.y = -(child.size.h / 2) + v;
+					case LayoutRule.HAlign(Align.FixedRB(v)):
+						childPos.x = -child.size.w + v;
+					case LayoutRule.VAlign(Align.FixedRB(v)):
+						childPos.y = -child.size.h + v;
+					case _:
+						// Ignore rules we don't know how to handle
+						//trace(rule);
 				}
 			}
-		}
-
-		return redraw;
-	}
-
-	private function _childPropertyChanged(origin:IBindable, name:String, from:Dynamic, to:Dynamic) {
-		var child = cast(origin, NodeBase);
-		switch(name) {
-			case "redrawRequested":
-				// Determine if redraw is needed? For now just push it up the stack
-				redrawRects.concat(child.redrawRects);
-				child.clearRedrawRequest(); // Redraw acknowledged, clear it
-				redrawRequested = true;
-			case "layoutRules":
-				// Should a layout change propagate up the stack? Maybe based on different rules for each container...
-				_recalcChildLayout();
-			case _:
-				//trace(name);
 		}
 	}
 
@@ -196,19 +166,39 @@ class NodeBase implements IBindable  {
 
 	public function clearRedrawRequest() {
 		redrawRects = new Array<Rect>();
-		redrawRequested = false;
+		//redrawRequested = false;
+	}
+
+	private function addNode(childNode:NodeBase):Void {
+		// Check if child is already attached
+		if(_childNodes.indexOf(childNode) != -1) return;
+
+		_childNodes.push(childNode);
+		_childPositions.set(childNode, new Position({x:0, y:0}));
+		Bind.bind(childNode.layoutIsValid, _childLayoutIsValidChanged);
+		layoutIsValid = false; // Notify my parent that I have changed
 	}
 
 	private function removeNode(childNode:NodeBase):Bool {
 		// Search for matching child and remove
-		var childIndex = _childIndex(childNode);
-		if(childIndex == -1) return false;
+		if(!_childNodes.remove(childNode))
+			return false;
 
-		_childNodes.splice(childIndex, 1);
+		_childPositions.remove(childNode);
+		Bind.unbind(childNode.layoutIsValid, _childLayoutIsValidChanged);
 
-		Bind.unbindAll(childNode);
+		// If child is a mouse listener, detach
+		if(_mouseListeners.indexOf(childNode) != -1) {
+			removeMouseListener(childNode);
+		}
+		layoutIsValid = false; // Notify my parent that I have changed
 		
 		return true;
+	}
+
+	private function _childLayoutIsValidChanged(from:Bool, to:Bool) {
+		// Propagate up stack by default - a fixed size container (window/dialog/etc) up the stack can override this and begin layout call back down stack (see Stage for an example)
+		layoutIsValid = false;
 	}
 
 	public function setLayoutRule(newRule:LayoutRule) {
@@ -221,14 +211,14 @@ class NodeBase implements IBindable  {
 			case LayoutRule.Cursor(cursorName):
 				mouseSubscribe = true;
 				// Watch mouse and adjust cursor
-				bindx.Bind.bind(this.mouseData.mouseInBounds, updateCursor);
+				bindx.Bind.bind(this.mouseData.mouseInBounds, _updateCursor);
 			case _:
 		}
 
-		Bind.notify(this.layoutRules, [], [newRule]);
+		layoutIsValid = false; // Notify parent I need to adjust my layout
 	}
 
-	function updateCursor(from:Bool, to:Bool) {
+	private function _updateCursor(from:Bool, to:Bool) {
 		if(to == false) {
 			parent.setCursor(null);
 		} else {
@@ -270,17 +260,15 @@ class NodeBase implements IBindable  {
 	}
 
 	public function addMouseListener(child:NodeBase) {
-		var childIndex = _childIndex(child);
-
 		// Child is attached and a mouseListener has not been created
-		if(childIndex>=0 && mouseListeners.indexOf(child) == -1) {
+		if(_childNodes.indexOf(child)>=0 && _mouseListeners.indexOf(child) == -1) {
 			// Lazy create mouseData for myself
 			if(mouseData == null) {
 				mouseData = new MouseData();
 			}
 			// Bind all events, this will translate the events to the child node
 			Bind.bindAll(mouseData, _doMouseChanged);
-			mouseListeners.push(child);
+			_mouseListeners.push(child);
 			// Push the request up the chain
 			if(parent != null) {
 				parent.addMouseListener(this);
@@ -290,16 +278,16 @@ class NodeBase implements IBindable  {
 
 	public function removeMouseListener(child:NodeBase) {
 		// Remove the child
-		mouseListeners.remove(child);
+		_mouseListeners.remove(child);
 		// Check if we should start ignoring mouseData changes
-		if(mouseListeners.length == 0 && !this.mouseSubscribe) {
+		if(_mouseListeners.length == 0 && !this.mouseSubscribe) {
 			Bind.unbindAll(mouseData);
 		}
 	}
 
 	private function _doMouseChanged(origin:IBindable, name:String, from:Dynamic, to:Dynamic) {
-		for(l in mouseListeners) {
-			var childPos = _childRect(l).position;
+		for(l in _mouseListeners) {
+			var childPos = _childPositions.get(l);
 			l.mouseData.x = mouseData.x - childPos.x;
 			l.mouseData.y = mouseData.y - childPos.y;
 			l.mouseData.xd = mouseData.xd;
@@ -312,7 +300,8 @@ class NodeBase implements IBindable  {
 		}
 
 		// TODO: check children for in bounds too? or maybe a separate property for children vs current node mouse in bounds?
-		if(mouseData.x>=0 && mouseData.x<=layoutSize.w && mouseData.y>=0 && mouseData.y<=layoutSize.h) {
+		// Bounds should be a shape instead of rectangle
+		if(mouseData.x>=0 && mouseData.x<=size.w && mouseData.y>=0 && mouseData.y<=size.h) {
 			mouseData.mouseInBounds = true;
 		} else {
 			mouseData.mouseInBounds = false;
@@ -335,37 +324,18 @@ class NodeBase implements IBindable  {
 		if(bgColor.A > 0) {
 			var _c = g2.color;
 			g2.color = bgColor;
-			g2.fillRect(0,0,layoutSize.w,layoutSize.h);
+			g2.fillRect(0,0,size.w,size.h);
 			g2.color = _c;
 		}
 
-		for(c in _childNodes) {
+		for(child in _childNodes) {
 			// TODO: Calc redraw based on invalid rects? 
+			// Use renderIsValid?
 			// Pass rects down chain (with translation) and each node can choose which children to render?
-			var childPos = c.rect.position;
+			var childPos = _childPositions.get(child);
 			g2.pushTranslation(childPos.x, childPos.y);
-			c.child.render(g2);
+			child.render(g2);
 			g2.popTransformation();
 		}
-	}
-
-	private function _childIndex(childNode:NodeBase):Int {
-		for(i in 0 ... _childNodes.length) {
-			if(_childNodes[i].child == childNode) {
-				return i;
-			}
-		}
-
-		return -1;
-	}
-
-	private function _childRect(childNode:NodeBase):Rect {
-		for(i in 0 ... _childNodes.length) {
-			if(_childNodes[i].child == childNode) {
-				return _childNodes[i].rect;
-			}
-		}
-
-		return null;
 	}
 }

@@ -14,26 +14,27 @@ class Text extends NodeBase {
 	}
 
 	public function doTextChange(from:String, to:String) {
-		var thisRect:Rect = new Rect({ position: { x: 0, y: 0 }, size: { w: layoutSize.w, h: layoutSize.h } });
-		addRedrawRect(thisRect);
-		redrawRequested = false; // Had to toggle redraw to make it propagate - need to review render requests
-		redrawRequested = true;
-		//redrawRects([thisRect]);
+		charRects = new Array<Rect>(); // Clear cache
+		layoutIsValid = false; // I changed, notify my parent
 	}
 
-	override private function _calcSize(size:Size) {
+	private override function _calcSize(layoutSize:Size) {
+		return calcSize(this, layoutSize);
+	}
+
+	public static override function calcSize(textNode:Text, size:Size) {
 		// Determine what size I want to be based on text size
 		// Ignore most layout rules, the parent container will handle positioning
-		var useFont = font;
-		var useFontSize = fontSize;
+		var useFont = textNode.font;
+		var useFontSize = textNode.fontSize;
 
 		if(useFont != null) {
-			size.h = font.height(useFontSize);
-			size.w = font.width(useFontSize, text);
+			size.h = textNode.font.height(useFontSize);
+			size.w = textNode.font.width(useFontSize, textNode.text);
 		} else {
 			// No font? fake some size
 			size.h = useFontSize;
-			size.w = (11.5*(useFontSize/16)) * text.length;
+			size.w = (11.5*(useFontSize/16)) * textNode.text.length;
 		}
 
 		return size;
@@ -91,9 +92,25 @@ class Text extends NodeBase {
 
 		return color;
 	}
+
+	public override function setLayoutRule(newRule:LayoutRule) {
+		switch(newRule) {
+			case LayoutRule.Font(_):
+				charRects = new Array<Rect>();
+			case LayoutRule.FontSize(_):
+				charRects = new Array<Rect>();
+			case _:
+				// Ignore
+		}
+		
+		super.setLayoutRule(newRule);
+	}
 	
+	var charRects:Array<Rect> = new Array<Rect>();
 	function get_characterRects() {
-		var charRects = new Array<Rect>();
+		// Check for cache
+		if(charRects.length>0) return charRects;
+		
 		// Try to get the font
 		var useFont = font;
 		var useFontSize = fontSize;

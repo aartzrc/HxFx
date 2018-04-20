@@ -20,6 +20,7 @@ class Stage extends NodeBase {
 		
 		Bind.bindAll(window.windowSize, doWindowSizeChange);
 		Bind.bind(window.mouse, attachMouse);
+		Bind.bind(this.layoutIsValid, _layoutIsValid_Changed);
 	}
 
 	private function attachMouse(from:Mouse, to:Mouse) {
@@ -28,7 +29,19 @@ class Stage extends NodeBase {
 	}
 
 	private function doWindowSizeChange(origin:IBindable, name: String, from:Dynamic, to:Dynamic) {
-		layoutToSize(new Size({ w: window.windowSize.w, h: window.windowSize.h }));
+		layoutIsValid = false;
+	}
+
+	private function _layoutIsValid_Changed(from:Bool, to:Bool) {
+		if(!to) {
+			// Stage has become invalid, force layout cycle
+			layoutToSize(new Size({ w: window.windowSize.w, h: window.windowSize.h }), true);
+
+			// TODO: push invalid rect to render engine, currently whole stage get re-drawn
+
+			// Layout up to date, time to render
+			System.renderNextFrame = true;
+		}
 	}
 
 	/*
@@ -42,7 +55,7 @@ class Stage extends NodeBase {
 	}
 	*/
 
-	override private function _childPropertyChanged(origin:IBindable, name:String, from:Dynamic, to:Dynamic) {
+	/*override private function _childPropertyChanged(origin:IBindable, name:String, from:Dynamic, to:Dynamic) {
 		super._childPropertyChanged(origin, name, from, to);
 		if(name == "redrawRequested") {
 			var child = cast(origin, NodeBase);
@@ -52,7 +65,7 @@ class Stage extends NodeBase {
 				System.renderNextFrame = true;
 			}
 		}
-	}
+	}*/
 	
 	override public function setCursor(cursorName:String) {
 		// Tell Window to change the cursor

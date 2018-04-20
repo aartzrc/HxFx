@@ -52,8 +52,10 @@ class Window implements IBindable {
 	}
 
 	private function onInit() {
-		// Create the stage
+		// Create the stage - fill all available window space
 		stage = new Stage(this);
+		stage.setLayoutRule(Width(Percent(100)));
+		stage.setLayoutRule(Height(Percent(100)));
 
 		// Load assets?
 
@@ -66,8 +68,8 @@ class Window implements IBindable {
 		windowSize.h = System._windowHeight;
 		initialized = true;
 
-		// Begin rendering
-		System.renderNextFrame = true;
+		// Begin layout and render
+		stage.layoutIsValid = false;
     }
 
 	public function render(framebuffer: Framebuffer): Void {
@@ -117,20 +119,20 @@ class Window implements IBindable {
         trace("Shutdown");
     }
 
-	var cursorStack:Array<String> = new Array<String>();
+	var cursorStack:List<String> = new List<String>();
 
 	public function setCursor(cursorName:String) {
 		var useCursorName:String = null;
-
+		
 		if(cursorName == null) {
 			cursorStack.pop();
 		} else {
 			cursorStack.push(cursorName);
 		}
 
-		// Grab the last cursor from the stack
+		// Grab the current cursor from the stack
 		if(cursorStack.length>0) {
-			useCursorName = cursorStack[cursorStack.length - 1];
+			useCursorName = cursorStack.first();
 		}
 
 		// Cursor change needs to be handled per target, maybe push in to Kha?

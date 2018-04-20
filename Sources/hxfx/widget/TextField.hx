@@ -7,45 +7,99 @@ import tests.ComponentWindow;
 @:bindable
 class TextField extends Text {
 	
+	@:bindable
+	var _startHighlightChar:Int = -1;
+	@:bindable
+	var _endHighlightChar:Int = -1;
+	@:bindable
+	var _focused:Bool = true;
+
 	public function new() {
 		super();
 
 		mouseSubscribe = true;
-		// Watch for mouse in bounds
-		bindx.Bind.bind(this.mouseData.mouseInBounds, _mouseInBounds);
+		
+		// Bind to mouse
+		Bind.bind(this.mouseData.b1down, _mouseb1Down);
+		Bind.bindAll(this.mouseData, _mouseChanged);
+
+		// Bind/react to highlight changes
+		Bind.bind(this._startHighlightChar, _highlightChanged);
+		Bind.bind(this._endHighlightChar, _highlightChanged);
 	}
 
-	// The binds below cascade bind/unbind to monitor the mouse click/drag cycle
-	
-	// TODO: while mouse is down, always track it - code below unbinds when out of bounds which isn't quite right
-
-	var mouseInBoundsUnbind:Dynamic = null;
-	private function _mouseInBounds(from:Bool, to:Bool) {
-		if(to) {
-			//mouseInBoundsUnbind = bindx.Bind.bind(this.mouseData.b1down, _mouseb1Down);
-			bindx.Bind.bind(this.mouseData.b1down, _mouseb1Down); // bindx is not returning a callback during compile, need to review
-		} else {
-			//if(mouseInBoundsUnbind != null) mouseInBoundsUnbind();
-			bindx.Bind.unbind(this.mouseData.b1down, _mouseb1Down);
-			if(mouseDraggingUnbind != null) mouseDraggingUnbind();
-		}
-	}
-
-	var mouseDraggingUnbind:Dynamic;
-	private function _mouseb1Down(from:Bool, to:Bool) {
-		if(to) {
-			mouseDraggingUnbind = bindx.Bind.bindAll(this.mouseData, _mouseDragging);
-		} else {
-			if(mouseDraggingUnbind != null) mouseDraggingUnbind();
-		}
+	private function _highlightChanged(from:Int, to:Int) {
+		layoutIsValid = false;
 	}
 
 	var dragStart:Position;
-	private function _mouseDragging(origin:IBindable, name:String, from:Dynamic, to:Dynamic) {
-		if(dragStart == null) {
-			dragStart = new Position({x: this.mouseData.x, y: this.mouseData.y });
+	var dragCurrent:Position;
+	private function _mouseb1Down(from:Bool, to:Bool) {
+		if(to && mouseData.mouseInBounds) {
+			// Button down and inside bounds, start tracking drag
+			if(dragStart == null) {
+				dragStart = new Position({x: this.mouseData.x, y: this.mouseData.y });
+			}
+		} else if(to) { // Clicked out of bounds, clear highlight
+			_startHighlightChar = -1;
+			_endHighlightChar = -1;
+		} else { // Button up, drag has stopped
+			dragStart = null;
 		}
-		trace(dragStart.x + " : " + dragStart.y + " to " + this.mouseData.x + " : " + this.mouseData.y);
+	}
+
+	
+	private function _mouseChanged(origin:IBindable, name:String, from:Dynamic, to:Dynamic) {
+		if(mouseData.b1down && dragStart != null) { // Button down and we have a start drag location, monitor and calculate highlighting
+			if(dragCurrent == null) {
+				dragCurrent = new Position({x: this.mouseData.x, y: this.mouseData.y });
+			} else {
+				dragCurrent.x = this.mouseData.x;
+				dragCurrent.y = this.mouseData.y;
+			}
+
+			// Limit mouse location to bounds of field
+			if(dragCurrent.x < 0) dragCurrent.x = 0;
+			if(dragCurrent.y < 0) dragCurrent.y = 0;
+			if(dragCurrent.x > size.w) dragCurrent.x = size.w;
+			if(dragCurrent.y > size.h) dragCurrent.y = size.h;
+
+			trace(dragCurrent);
+			
+			// Calculate characters selected
+			for(i in 0 ... characterRects.length) {
+				if(characterRects[i].inBounds(dragStart)) {
+					_startHighlightChar = i;
+				}
+				if(characterRects[i].inBounds(dragCurrent)) {
+					_endHighlightChar = i;
+				}
+			}
+		}
+
+		//trace(_startHighlightChar + " : " + _endHighlightChar);
+	}
+
+	override public function render(g2: Graphics): Void {
+		super.render(g2);
+
+		// Check if highlight is happening
+		if(_startHighlightChar >= 0 && _endHighlightChar >= 0 && _startHighlightChar < characterRects.length && _endHighlightChar < characterRects.length) {
+			g2.color = kha.Color.fromFloats(0,0,0,.4);
+			var s = _startHighlightChar;
+			var e = _endHighlightChar;
+			if(_endHighlightChar<s) {
+				s = _endHighlightChar;
+				e = _startHighlightChar;
+			}
+			trace("chars: " + s + " : " + e);
+			var sR = characterRects[s];
+			var eR = characterRects[e];
+
+			trace(sR);
+			trace(eR);
+			g2.fillRect(sR.position.x, sR.position.y, eR.position.x + eR.size.w - sR.position.x, eR.position.y + eR.size.h - sR.position.y);
+		}
 	}
 
 }
