@@ -28,6 +28,7 @@ class TextField extends Text {
 		
 		// Bind to mouse
 		Bind.bind(this.mouseData.b1down, _mouseb1Down);
+		Bind.bind(this.mouseData.b1doubleclicked, _mouseb1DblClicked);
 		Bind.bindAll(this.mouseData, _mouseChanged);
 
 		// Bind/react to highlight changes
@@ -78,9 +79,27 @@ class TextField extends Text {
 		}
 	}
 
+	private function _mouseb1DblClicked(from:Bool, to:Bool) {
+		if(to && mouseData.mouseInBounds) {
+			// Get the left position
+			var _newPos = _cursorPos;
+			while(_newPos>=0 && wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos--;
+			if(_newPos<0) _newPos = 0;
+				else _newPos++;
+			_startHighlightChar = _newPos;
+			
+			// Get the right position
+			_newPos = _cursorPos;
+			while(_newPos<=charCodes.length && wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos++;
+			if(_newPos>charCodes.length) _newPos = charCodes.length;
+			_endHighlightChar = _newPos;
+
+			_cursorPos = _endHighlightChar;
+		}
+	}
 	
 	private function _mouseChanged(origin:IBindable, name:String, from:Dynamic, to:Dynamic) {
-		if(mouseData.b1down && dragStart != null) { // Button down and we have a start drag location, monitor and calculate highlighting
+		if(mouseData.b1down && dragStart != null && !mouseData.b1doubleclicked) { // Button down and we have a start drag location, monitor and calculate highlighting
 			if(dragCurrent == null) {
 				dragCurrent = new Position({x: this.mouseData.x, y: this.mouseData.y });
 			} else {
@@ -354,9 +373,8 @@ class TextField extends Text {
 
 	override public function render(g2: Graphics): Void {
 		super.render(g2);
-
 		// Check if highlight is happening
-		if(_startHighlightChar != _endHighlightChar) {
+		if(highlighted) {
 			var s = _startHighlightChar;
 			var e = _endHighlightChar;
 			if(_endHighlightChar<s) {

@@ -1,7 +1,10 @@
 package hxfx.core.data;
 
+
+
 @:bindable
 class Mouse implements IBindable  {
+	inline static var dblClickDelay:Float = .2;
 	public var mouseData:MouseData;
 
 	public function new(windowId:Int) {
@@ -10,6 +13,24 @@ class Mouse implements IBindable  {
 		//trace(khaMouse);
 		khaMouse.notifyWindowed(windowId, downListener, upListener, moveListener, wheelListener, leaveListener);
 		mouseData = new MouseData();
+		Bind.bind(mouseData.b1down, _dblClickCheck);
+	}
+
+	var downCount:Int = 0;
+	var downTimer:Int = -1;
+	private function _dblClickCheck(from:Bool, to:Bool) {
+		if(to) {
+			if(downTimer != -1) kha.Scheduler.removeTimeTask(downTimer); // Remove the old dbl-click task
+			downTimer = kha.Scheduler.addTimeTask(_dblClickEnd, dblClickDelay, dblClickDelay); // Create a new timer to watch for dbl-click
+			downCount++;
+			if(downCount>=2) mouseData.b1doubleclicked = true;
+		}
+	}
+
+	private function _dblClickEnd() {
+		downCount = 0;
+		mouseData.b1doubleclicked = false;
+		kha.Scheduler.removeTimeTask(downTimer);
 	}
 
 	public function downListener(buttonNum:Int, x:Int, y:Int) {

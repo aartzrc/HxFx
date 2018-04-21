@@ -12,6 +12,7 @@ class MouseData implements IBindable  {
 	public var wheeld:Int = 0;
 	public var wheel:Int = 0;
 	public var mouseInBounds:Bool = false;
+	public var b1doubleclicked:Bool = false;
 
 	public function new() {}
 }

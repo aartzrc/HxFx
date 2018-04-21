@@ -12,7 +12,8 @@ class SimpleWindow extends Window {
 		new SimpleWindow("HxFx Test - SimpleWindow");
 	}
 
-	var text:TextField;
+	//var text:TextField;
+	var textFields:Array<TextField>;
 
 	override function onInit() {
 		super.onInit();
@@ -22,7 +23,10 @@ class SimpleWindow extends Window {
 		Assets.loadFont("arialsmall", function(arial:Font)
 		//Assets.loadFont("arial", function(arial:Font)
 		{
-			text.setFontRule(FontRule.Font(arial));
+			//text.setFontRule(FontRule.Font(arial));
+			for(t in textFields) {
+				t.setFontRule(FontRule.Font(arial));
+			}
 		});
 
 		// Any way to block the array from modification?
@@ -40,20 +44,27 @@ class SimpleWindow extends Window {
 		block.setLayoutRule(VAlign(Align.PercentMiddle(25)));
 		//block.setLayoutRule(Cursor("pointer"));
 
-		text = new TextField();
-		//text.text = "testing 1234 ...";ГД
-		//text.text = "xxГДxx中文xx";
-		text.text = "Get the currently highlighted text";
-		trace(text.text);
-		//text.text = "test";
-		text.setLayoutRule(Color(kha.Color.Red));
-		text.setFontRule(FontSize(50));
-		//text.setLayoutRule(HAlign(Align.PercentMiddle(50)));
-		//text.setLayoutRule(HAlign(Align.FixedLT(10)));
-		text.setLayoutRule(VAlign(Align.PercentMiddle(50)));
-		text.setLayoutRule(Cursor("text"));
+		textFields = new Array<TextField>();
+		for(i in 0 ... 1) {
+			var text = new TextField();
+			//text.text = "testing 1234 ...";ГД
+			//text.text = "xxГДxx中文xx";
+			text.text = "Get the currently highlighted text";
+			//trace(text.text);
+			//text.text = "test";
+			text.setLayoutRule(Color(kha.Color.Black));
+			text.setFontRule(FontSize(20));
+			//text.setLayoutRule(HAlign(Align.PercentMiddle(50)));
+			//text.setLayoutRule(HAlign(Align.FixedLT(10)));
+			//text.setLayoutRule(VAlign(Align.PercentMiddle(50)));
+			//text.setLayoutRule(VAlign(Align.FixedM(i*10)));
+			//text.setLayoutRule(HAlign(Align.FixedLT(i%10 * 100)));
+			text.setLayoutRule(Cursor("text"));
 
-		text.parent = block;
+			textFields.push(text);
+
+			text.parent = block;
+		}
 
 		block.parent = stage;
 
@@ -63,14 +74,16 @@ class SimpleWindow extends Window {
 	var randString:String = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ     !@#$%^&*()-+";
 	public function randomTextChange() {
 		//trace("rand..");
-		var pos = Std.random(randString.length+10);
-		// Delete character
-		if(pos>randString.length && text.text.length>0) {
-			text.text = text.text.substring(0, text.text.length-1);
-		} else {
-			text.text += randString.charAt(pos);
+		for(text in textFields) {
+			var pos = Std.random(randString.length+10);
+			// Delete character
+			if(pos>randString.length && text.text.length>0) {
+				text.text = text.text.substring(0, text.text.length-1);
+			} else {
+				text.text += randString.charAt(pos);
+			}
 		}
 
-		trace(text.text);
+		//trace(text.text);
 	}
 }

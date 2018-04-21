@@ -310,6 +310,7 @@ class NodeBase implements IBindable  {
 			l.mouseData.b3down = mouseData.b3down;
 			l.mouseData.wheeld = mouseData.wheeld;
 			l.mouseData.wheel = mouseData.wheel;
+			l.mouseData.b1doubleclicked = mouseData.b1doubleclicked;
 		}
 
 		// TODO: check children for in bounds too? or maybe a separate property for children vs current node mouse in bounds?
