@@ -28,7 +28,7 @@ class NodeBase implements IBindable  {
 	public var focused:Bool = false; // Used to trace current focus path - keyboard events will feed down the focus path, similar to mouseSubscribe but for keyboard
 	@:bindable(force)
 	// Review layout system - use a rule/override system with bindings to some top level objects to reproduce css type updates?
-	public var layoutRules(default,null):Array<BaseRule>;
+	public var layoutRules(default,null):List<BaseRule>;
 
 	@:bindable
 	public var mouseData:MouseData = null;
@@ -47,7 +47,7 @@ class NodeBase implements IBindable  {
 	public function new() {
 		size = new Size({});
 		layoutSize = new Size({});
-		layoutRules = new Array<BaseRule>();
+		layoutRules = new List<BaseRule>();
 		redrawRects = new Array<Rect>();
 		//Bind.bind(this.layoutRules, _layoutRulesChange);
 		Bind.bind(this.parent, _parentChange);
@@ -108,10 +108,14 @@ class NodeBase implements IBindable  {
 					newSize.w = v;
 				case BaseRule.Width(LayoutSize.Percent(v)):
 					newSize.w = layoutSize.w*(v/100);
+				case BaseRule.Width(LayoutSize.PercentLessFixed(p, f)):
+					newSize.w = (layoutSize.w - f) * (p/100);
 				case BaseRule.Height(LayoutSize.Fixed(v)):
 					newSize.h = v;
 				case BaseRule.Height(LayoutSize.Percent(v)):
 					newSize.h = layoutSize.h*(v/100);
+				case BaseRule.Height(LayoutSize.PercentLessFixed(p, f)):
+					newSize.h = (layoutSize.h - f) * (p/100);
 				case _:
 					// Ignore rules we don't know how to handle
 					//trace(rule);
@@ -138,21 +142,30 @@ class NodeBase implements IBindable  {
 			// Child has determined how big it wants to be, now position it based on rules available
 			for(rule in child.layoutRules) {
 				switch(rule) {
-					case BaseRule.HAlign(Align.PercentMiddle(v)):
-						childPos.x = (size.w-child.size.w) * (v/100);
-					case BaseRule.VAlign(Align.PercentMiddle(v)):
-						childPos.y = (size.h-child.size.h) * (v/100);
-					case BaseRule.HAlign(Align.FixedLT(v)):
+					case BaseRule.AlignX(Align.PercentLT(v)):
+						childPos.x = (size.w * (v/100));
+					case BaseRule.AlignY(Align.PercentLT(v)):
+						childPos.y = (size.h * (v/100));
+					case BaseRule.AlignX(Align.PercentM(v)):
+						childPos.x = (size.w * (v/100)) - (child.size.w/2); // Calc to middle of parent node, then move left 1/2 of child node size
+					case BaseRule.AlignY(Align.PercentM(v)):
+						childPos.y = (size.h * (v/100)) - (child.size.h/2); // Calc to middle of parent node, then move left 1/2 of child node size
+					case BaseRule.AlignX(Align.PercentRB(v)):
+						childPos.x = (size.w * (v/100)) - child.size.w;
+					case BaseRule.AlignY(Align.PercentRB(v)):
+						childPos.y = (size.h * (v/100)) - child.size.h;
+
+					case BaseRule.AlignX(Align.FixedLT(v)):
 						childPos.x = v;
-					case BaseRule.VAlign(Align.FixedLT(v)):
+					case BaseRule.AlignY(Align.FixedLT(v)):
 						childPos.y = v;
-					case BaseRule.HAlign(Align.FixedM(v)):
+					case BaseRule.AlignX(Align.FixedM(v)):
 						childPos.x = -(child.size.w / 2) + v;
-					case BaseRule.VAlign(Align.FixedM(v)):
+					case BaseRule.AlignY(Align.FixedM(v)):
 						childPos.y = -(child.size.h / 2) + v;
-					case BaseRule.HAlign(Align.FixedRB(v)):
+					case BaseRule.AlignX(Align.FixedRB(v)):
 						childPos.x = -child.size.w + v;
-					case BaseRule.VAlign(Align.FixedRB(v)):
+					case BaseRule.AlignY(Align.FixedRB(v)):
 						childPos.y = -child.size.h + v;
 					case _:
 						// Ignore rules we don't know how to handle
@@ -171,6 +184,12 @@ class NodeBase implements IBindable  {
 	public function clearRedrawRequest() {
 		redrawRects = new Array<Rect>();
 		//redrawRequested = false;
+	}
+
+	public var children(get, never):Array<NodeBase>;
+
+	function get_children() {
+		return _childNodes;
 	}
 
 	private function addNode(childNode:NodeBase):Void {
@@ -204,6 +223,19 @@ class NodeBase implements IBindable  {
 		return true;
 	}
 
+	public function setChildIndex(childNode:NodeBase, index:Int):Bool {
+		if(_childNodes.indexOf(childNode) == -1) return false;
+		_childNodes.remove(childNode);
+		_childNodes.insert(index, childNode);
+		return true;
+	}
+
+	public function clearChildren() {
+		for(c in _childNodes) {
+			c.parent = null;
+		}
+	}
+
 	private function _childLayoutIsValidChanged(from:Bool, to:Bool) {
 		// Propagate up stack by default - a fixed size container (window/dialog/etc) up the stack can override this and begin layout call back down stack (see Stage for an example)
 		if(!to) layoutIsValid = false;
@@ -216,8 +248,20 @@ class NodeBase implements IBindable  {
 
 	public function setLayoutRule(newRule:BaseRule) {
 		// TODO: check for other rules that should be removed during this update
-		layoutRules.push(newRule);
+		var ruleConstructor = Type.enumConstructor(newRule);
+		switch(ruleConstructor) {
+			case "Width", "Height", "HAlign", "VAlign":
+				for(r in layoutRules) {
+					if(Type.enumConstructor(r) == ruleConstructor) {
+						layoutRules.remove(r);
+					}
+				}
+		}
+
 		// Return previous rule if one was removed?
+
+		// Add to end of list so rules get overridden
+		layoutRules.add(newRule);
 
 		// If cursor is changing to non-default begin listening to mouse
 		switch(newRule) {
@@ -376,22 +420,18 @@ class NodeBase implements IBindable  {
 		// Draw myself - clear to my background color
 		// TODO: this should only clear invalid rects for the area within this node
 		// TODO: background is a layoutRule, should it be cached or loop through all layoutRules during rendering?
-		var bgColor = kha.Color.Transparent;
-		for(r in layoutRules) {
-			switch(r) {
-				case BaseRule.BackgroundColor(c):
-					bgColor = c;
-				case _:
-					// Ignore other rules
-			}
-		}
-		if(bgColor.A > 0) {
+		var bgColor = backgroundColor;
+		if(backgroundColor.A > 0) {
 			var _c = g2.color;
 			g2.color = bgColor;
 			g2.fillRect(0,0,size.w,size.h);
 			g2.color = _c;
 		}
 
+		_renderChildren(g2);
+	}
+
+	function _renderChildren(g2:Graphics) {
 		for(child in _childNodes) {
 			// TODO: Calc redraw based on invalid rects? 
 			// Use renderIsValid?
@@ -401,6 +441,36 @@ class NodeBase implements IBindable  {
 			child.render(g2);
 			g2.popTransformation();
 		}
+	}
+
+	public var backgroundColor(get, never):kha.Color;
+
+	function get_backgroundColor() {
+		var bgColor = kha.Color.Transparent;
+		for(r in layoutRules) {
+			switch(r) {
+				case BaseRule.BackgroundColor(c):
+					bgColor = c;
+				case _:
+					// Ignore other rules
+			}
+		}
+		return bgColor;
+	}
+
+	public var color(get, never):kha.Color;
+
+	function get_color() {
+		var color = kha.Color.Transparent;
+		for(r in layoutRules) {
+			switch(r) {
+				case BaseRule.Color(c):
+					color = c;
+				case _:
+					// Ignore other rules
+			}
+		}
+		return color;
 	}
 }
 
@@ -413,9 +483,9 @@ Width/height sizes are same, 1.0 float == 16px
 enum BaseRule {
 	// Position/size
 	Width(v:LayoutSize);
-	HAlign(v:Align);
+	AlignX(v:Align);
 	Height(v:LayoutSize);
-	VAlign(v:Align);
+	AlignY(v:Align);
 	
 	// Color
 	BackgroundColor(c:Color);
@@ -426,13 +496,16 @@ enum BaseRule {
 }
 
 enum LayoutSize {
-	Fixed(v:Float);
-	Percent(v:Float);
+	Fixed(v:Float); // A fixed width
+	Percent(v:Float); // A percent width relative to the provided layout area (typically the parents full layout space)
+	PercentLessFixed(percent:Float, fixed:Float); // Reduce the dimension by the fixed value, then use percent size
 }
 
 enum Align {
 	FixedLT(v:Float); // Left or top edge of node is in a fixed position
 	FixedM(v:Float); // Middle of node is in a fixed position
-	FixedRB(v:Float); //Right or bottom edge of node is in a fixed position
-	PercentMiddle(v:Float); // Middle of node is a percent position from left of layout area
+	FixedRB(v:Float); // Right or bottom edge of node is in a fixed position
+	PercentLT(v:Float); // Left or top edge of node is a percent position from left or top of layout area
+	PercentM(v:Float); // Middle of node is a percent position from left of layout area
+	PercentRB(v:Float); // Right or bottom edge of node is a percent position from right or bottom of layout area
 }

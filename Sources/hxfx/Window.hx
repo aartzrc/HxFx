@@ -18,6 +18,8 @@ class Window implements IBindable {
 	public var mouse:hxfx.core.data.Mouse;
 	public var keyboard:hxfx.core.data.Keyboard;
 
+	public var antialias:Int = 4;
+
 	public function new(appTitle:String) {
 		windowSize = new Size({ w: 1024, h: 768 });
 
@@ -25,12 +27,12 @@ class Window implements IBindable {
 		var windowModeOptions:WindowedModeOptions = {
 			resizable: true,
 			maximizable: true, 
-			minimizable: true
+			minimizable: true,
 		};
 
 		var rendererOptions:RendererOptions = {
 			//depthStencilFormat: DepthStencilFormat.DepthAutoStencilAuto
-			samplesPerPixel:4 // TODO: make sure antialias setting gets pushed into Kha-windows
+			samplesPerPixel:this.antialias // TODO: make sure antialias setting gets pushed into Kha-windows
 		};
 
 		var windowOptions:WindowOptions = {

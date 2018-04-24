@@ -1,8 +1,6 @@
 package hxfx.widget;
 
 import hxfx.core.NodeBase;
-import kha.Assets;
-import tests.ComponentWindow;
 
 @:bindable
 class Text extends NodeBase {
@@ -14,11 +12,11 @@ class Text extends NodeBase {
 	public static var fontGlyphs:Array<Int>; // The Kha graphics font glyphs
 	public static var addFontGlyphs:Array<Int>; // Glyphs to add during next render
 
-	public var fontRules(default,null):Array<FontRule>;
+	public var fontRules(default,null):List<FontRule>;
 
 	public function new() {
 		super();
-		fontRules = new Array<FontRule>();
+		fontRules = new List<FontRule>();
 		fontGlyphs = new Array<Int>();
 		addFontGlyphs = new Array<Int>();
 		Bind.bind(this.text, doTextChange);
@@ -114,17 +112,27 @@ class Text extends NodeBase {
 	}
 
 	public function setFontRule(newRule:FontRule) {
+		var ruleConstructor = Type.enumConstructor(newRule);
+		trace(ruleConstructor);
+		// TODO: check for other rules that should be removed during this update
+		switch(ruleConstructor) {
+			case "Font":
+				for(r in fontRules) {
+					if(Type.enumConstructor(r) == ruleConstructor) {
+						fontRules.remove(r);
+					}
+				}
+		}
+
+		// Clear cache if font changes
 		switch(newRule) {
-			case FontRule.Font(_):
-				charRects = new Array<Rect>();
-			case FontRule.FontSize(_):
+			case FontRule.Font(_), FontRule.FontSize(_):
 				charRects = new Array<Rect>();
 			case _:
 				// Ignore
 		}
 
-		// TODO: check for other rules that should be removed during this update
-		fontRules.push(newRule);
+		fontRules.add(newRule);
 
 		// Notify parent of the change
 		layoutIsValid = false;
@@ -142,7 +150,7 @@ class Text extends NodeBase {
 
 		if(useFont != null) {
 			var h = useFont.height(useFontSize);
-			var ki = useFont._get(useFontSize, charCodes); // Make Kha draw the whole string, this is a workaround to make sure unicode character sizes are fully calculated
+			//var ki = useFont._get(useFontSize, charCodes); // Make Kha draw the whole string, this is a workaround to make sure unicode character sizes are fully calculated
 			for(i in 1 ... charCodes.length+1) {
 				var w = useFont.widthOfCharacters(useFontSize, charCodes, 0, i);				
 				charRects.push(new Rect({position: {x: x, y: 0}, size: {w:w-x, h:h}}));

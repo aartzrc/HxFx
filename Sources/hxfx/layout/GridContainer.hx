@@ -3,16 +3,15 @@ package hxfx.layout;
 import hxfx.core.NodeBase;
 
 /**
-A fixed grid, specify x and y columns and it will space out evenly
+A variable grid, specify x and y columns and it will space out evenly be default
+Use setGridRule to change column/row proportions
 **/
 @:bindable
-class GridContainer extends NodeBase {
+class GridContainer extends AbsoluteContainer {
 	
-	var _xColCount:Int = 1;
-	var _yColCount:Int = 1;
-	var _gridNodes:Array<AbsoluteContainer> = [];
-	public var gridNodeColorEven:Color = Color.Transparent;
-	public var gridNodeColorOdd:Color = Color.Transparent;
+	var _xColCount:Int;
+	var _yColCount:Int;
+	var _gridNodes:Array<NodeBase> = [];
 
 	public function new(xColumns:Int, yColumns:Int) {
 		super();
@@ -20,39 +19,37 @@ class GridContainer extends NodeBase {
 		_xColCount = xColumns;
 		_yColCount = yColumns;
 
-		// Set up default grid
+		// Set up default the grid cells
 		for(x in 0 ... _xColCount) {
-			for( y in 0 ... _yColCount) {
-				setChild(null, x, y);
+			for(y in 0 ... _yColCount) {
+				setCell(null, x, y);
 			}
 		}
-
-		backgroundColor = Color.Transparent;
-
-		Bind.bind(this.gridNodeColorEven, changeGridNodeColors);
-		Bind.bind(this.gridNodeColorOdd, changeGridNodeColors);
 	}
 
-	private function changeGridNodeColors(from:Color, to:Color) {
-		// Update grid colors
-		for(x in 0 ... _xColCount) {
-			for( y in 0 ... _yColCount) {
-				var index = (y * _xColCount) + x;
-				var xMod = x % 2;
-				var yMod = y % 2;
-				var fMod = (xMod+yMod) % 2;
-				if(fMod == 1) {
-					_gridNodes[index].backgroundColor = gridNodeColorOdd;
-				} else {
-					_gridNodes[index].backgroundColor = gridNodeColorEven;
-				}
-			}
+	/**
+	 *  Helper to set all child nodes in a column
+	 *  @param col - 
+	 *  @param rule - 
+	 */
+	public function setColumnLayoutRule(col:Int, rule:BaseRule) {
+		for(y in 0 ... _yColCount) {
+			getCell(col, y).setLayoutRule(rule);
 		}
-
-		System.renderNextFrame = true;
 	}
 
-	public function getChild(x:Int, y:Int):NodeBase {
+	/**
+	 *  Helper to set all child nodes in a row
+	 *  @param row - 
+	 *  @param rule - 
+	 */
+	public function setRowLayoutRule(row:Int, rule:BaseRule) {
+		for(x in 0 ... _xColCount) {
+			getCell(x, row).setLayoutRule(rule);
+		}
+	}
+
+	public function getCell(x:Int, y:Int):NodeBase {
 		if(x>=0 && x<_xColCount && y>=0 && y<_yColCount) {
 			var index = (y * _xColCount) + x;
 			return _gridNodes[index];
@@ -60,39 +57,41 @@ class GridContainer extends NodeBase {
 		return null;
 	}
 
-	public function setChild(child:NodeBase, x:Int, y:Int) {
+	public function setCell(cell:NodeBase, x:Int, y:Int) {
+		var w:Float = 100/_xColCount;
+		var h:Float = 100/_yColCount;
 		if(x>=0 && x<_xColCount && y>=0 && y<_yColCount) {
 			// Keep track of containers
 			var index = (y * _xColCount) + x;
-			var gridNode:AbsoluteContainer = null;
 			if(_gridNodes[index] != null) {
-				gridNode = _gridNodes[index];
-			} else {
-				// Create an AbsoluteContainer that fills the grid block
-				gridNode = new AbsoluteContainer();
-				_gridNodes[index] = gridNode;
-				gridNode.layout.widthPercent = (100/_xColCount);
-				gridNode.layout.heightPercent = (100/_yColCount);
-				gridNode.layout.marginLeftPercent = gridNode.layout.widthPercent * x;
-				gridNode.layout.marginTopPercent = gridNode.layout.heightPercent * y;
+				_gridNodes[index].parent = null; // Detach previous cell from parent
+			}
+			if(cell == null) {
+				// By default create an AbsoluteContainer that fills the grid block
+				cell = new AbsoluteContainer();
+				cell.setLayoutRule(BaseRule.Width(LayoutSize.Percent(w)));
+				cell.setLayoutRule(BaseRule.Height(LayoutSize.Percent(h)));
+				cell.setLayoutRule(BaseRule.AlignX(Align.PercentLT(w * x)));
+				cell.setLayoutRule(BaseRule.AlignY(Align.PercentLT(h * y)));
+
 				// Debug test, flip background colors of the grid
-				var xMod = x % 2;
+				/*var xMod = x % 2;
 				var yMod = y % 2;
 				var fMod = (xMod+yMod) % 2;
 				if(fMod == 1) {
-					gridNode.backgroundColor = gridNodeColorOdd;
+					gridNode.setLayoutRule(BaseRule.BackgroundColor(kha.Color.fromFloats(0,0,0,.3)));
 				} else {
-					gridNode.backgroundColor = gridNodeColorEven;
-				}
-				gridNode.parent = this;
+					gridNode.setLayoutRule(BaseRule.BackgroundColor(kha.Color.fromFloats(0,0,0,.1)));
+				}*/
 			}
+			_gridNodes[index] = cell;
+			cell.parent = this;
 			
 			// Assign the child to this grid block (the child will see the AbsoluteContainer and adjust as needed)-
-			if(child != null) {
+			/*if(child != null) {
 				child.parent = gridNode;
-			}
-
-			// TODO: invalidate grid rectangle, can child handle that based on parent? if child handles then it can tell render engine it's previous rect and new rect at the same time
+				trace(gridNode._childNodes.length);
+			}*/
 		}
 	}
 }

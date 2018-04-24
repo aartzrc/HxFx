@@ -35,13 +35,13 @@ class SimpleWindow extends Window {
 
 		//var block = new AbsoluteContainer();
 		var block = new BorderContainer();
-		block.borderColor = kha.Color.Blue;
+		block.setBorderRule(Color(kha.Color.Blue));
 		block.setLayoutRule(BackgroundColor(kha.Color.fromFloats(0,0,0,.15)));
 		block.setLayoutRule(Width(LayoutSize.Percent(50)));
 		block.setLayoutRule(Height(LayoutSize.Fixed(30)));
 		//block.setLayoutRule(Width(LayoutSize.Fixed(150)));
-		block.setLayoutRule(HAlign(Align.PercentMiddle(50)));
-		block.setLayoutRule(VAlign(Align.PercentMiddle(25)));
+		block.setLayoutRule(AlignX(Align.PercentM(50)));
+		block.setLayoutRule(AlignY(Align.PercentM(25)));
 		//block.setLayoutRule(Cursor("pointer"));
 
 		textFields = new Array<TextField>();

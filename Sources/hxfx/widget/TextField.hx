@@ -1,10 +1,7 @@
 package hxfx.widget;
 
-import hxfx.core.NodeBase;
-import kha.Assets;
 import kha.Scheduler;
 import kha.input.KeyCode;
-import tests.ComponentWindow;
 
 @:bindable
 class TextField extends Text {
