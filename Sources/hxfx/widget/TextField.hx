@@ -370,7 +370,11 @@ class TextField extends Text {
 		_startHighlightChar = -1;
 		_endHighlightChar = -1;
 	}
-
+	public function setTextFieldRule(newRule:TextFieldRule) {
+		//TODO: enable or disable editable capabilities based on rule
+		// Notify parent of the change
+		layoutIsValid = false;
+	}
 	override public function render(g2: Graphics): Void {
 		super.render(g2);
 		// Check if highlight is happening
@@ -404,4 +408,14 @@ class TextField extends Text {
 		}
 	}
 
+}
+enum TextFieldRule {
+	// Font
+	editable(mode:EditableRule);
+
+}
+enum EditableRule{
+	SelectableAndEditable;
+	SelectableNotEditable;
+	NotSelectableOrEditable;
 }

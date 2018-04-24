@@ -30,7 +30,7 @@ class Window implements IBindable {
 
 		var rendererOptions:RendererOptions = {
 			//depthStencilFormat: DepthStencilFormat.DepthAutoStencilAuto
-			//samplesPerPixel:1 // TODO: make sure antialias setting gets pushed into Kha-windows
+			samplesPerPixel:4 // TODO: make sure antialias setting gets pushed into Kha-windows
 		};
 
 		var windowOptions:WindowOptions = {
