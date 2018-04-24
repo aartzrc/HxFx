@@ -12,6 +12,8 @@ The basic concept is:
 5. At the top of the stack (window/stage), the dirty rectangle is accepted and render engine processes
 **/
 class NodeBase implements IBindable  {
+	@:bindable
+	public var settings:NodeBaseSettings;
 	@:bindable(force)
 	public var layoutSize(default, null):Size; // This is the last size this node was told to use for layout purposes (set during layoutToSize() call)
 	@:bindable(force)
@@ -21,14 +23,11 @@ class NodeBase implements IBindable  {
 	@:bindable
 	public var parent:NodeBase;
 	@:bindable
-	public var scale:Float = 1; // 96 dpi default?
+	public var scale:Float = 1; // 96 or 72 dpi default?
 	@:bindable
 	public var cull:Bool; // Use for render culling, render updates won't be passed through - not implemented
 	@:bindable
 	public var focused:Bool = false; // Used to trace current focus path - keyboard events will feed down the focus path, similar to mouseSubscribe but for keyboard
-	@:bindable(force)
-	// Review layout system - use a rule/override system with bindings to some top level objects to reproduce css type updates?
-	public var layoutRules(default,null):List<BaseRule>;
 
 	@:bindable
 	public var mouseData:MouseData = null;
@@ -44,12 +43,17 @@ class NodeBase implements IBindable  {
 	/* note, empty constructor was chosen so that instances could be initialized before parent was assigned
 	assigning parent causes layout/etc to happen, set all initial values before assigning parent to avoid extra layout calls
 	*/
-	public function new() {
+	public function new(?useSettings:NodeBaseSettings) {
+		if(useSettings == null) {
+			settings = new NodeBaseSettings();
+		} else {
+			settings = useSettings;
+		}
 		size = new Size({});
 		layoutSize = new Size({});
-		layoutRules = new List<BaseRule>();
 		redrawRects = new Array<Rect>();
-		//Bind.bind(this.layoutRules, _layoutRulesChange);
+		Bind.bindAll(this.settings, _settings_Changed);
+		Bind.bind(this.settings.cursor, _doCursorChanged);
 		Bind.bind(this.parent, _parentChange);
 		Bind.bind(this.mouseSubscribe, _mouseSubscribe);
 	}
@@ -102,24 +106,22 @@ class NodeBase implements IBindable  {
 
 		// Determine what size I want to be based on my layout rules
 		// Position is handled by the parent!
-		for(rule in node.layoutRules) {
-			switch(rule) {
-				case BaseRule.Width(LayoutSize.Fixed(v)):
-					newSize.w = v;
-				case BaseRule.Width(LayoutSize.Percent(v)):
-					newSize.w = layoutSize.w*(v/100);
-				case BaseRule.Width(LayoutSize.PercentLessFixed(p, f)):
-					newSize.w = (layoutSize.w - f) * (p/100);
-				case BaseRule.Height(LayoutSize.Fixed(v)):
-					newSize.h = v;
-				case BaseRule.Height(LayoutSize.Percent(v)):
-					newSize.h = layoutSize.h*(v/100);
-				case BaseRule.Height(LayoutSize.PercentLessFixed(p, f)):
-					newSize.h = (layoutSize.h - f) * (p/100);
-				case _:
-					// Ignore rules we don't know how to handle
-					//trace(rule);
-			}
+
+		switch(node.settings.width) {
+			case LayoutSize.Fixed(v):
+				newSize.w=v;
+			case LayoutSize.Percent(v):
+				newSize.w = layoutSize.w*(v/100);
+			case LayoutSize.PercentLessFixed(p, f):
+				newSize.w = (layoutSize.w - f) * (p/100);
+		}
+		switch(node.settings.height) {
+			case LayoutSize.Fixed(v):
+				newSize.h=v;
+			case LayoutSize.Percent(v):
+				newSize.h = layoutSize.h*(v/100);
+			case LayoutSize.PercentLessFixed(p, f):
+				newSize.h = (layoutSize.h - f) * (p/100);
 		}
 
 		return newSize;
@@ -140,37 +142,33 @@ class NodeBase implements IBindable  {
 			var childPos = _childPositions.get(child);
 
 			// Child has determined how big it wants to be, now position it based on rules available
-			for(rule in child.layoutRules) {
-				switch(rule) {
-					case BaseRule.AlignX(Align.PercentLT(v)):
-						childPos.x = (size.w * (v/100));
-					case BaseRule.AlignY(Align.PercentLT(v)):
-						childPos.y = (size.h * (v/100));
-					case BaseRule.AlignX(Align.PercentM(v)):
-						childPos.x = (size.w * (v/100)) - (child.size.w/2); // Calc to middle of parent node, then move left 1/2 of child node size
-					case BaseRule.AlignY(Align.PercentM(v)):
-						childPos.y = (size.h * (v/100)) - (child.size.h/2); // Calc to middle of parent node, then move left 1/2 of child node size
-					case BaseRule.AlignX(Align.PercentRB(v)):
-						childPos.x = (size.w * (v/100)) - child.size.w;
-					case BaseRule.AlignY(Align.PercentRB(v)):
-						childPos.y = (size.h * (v/100)) - child.size.h;
-
-					case BaseRule.AlignX(Align.FixedLT(v)):
-						childPos.x = v;
-					case BaseRule.AlignY(Align.FixedLT(v)):
-						childPos.y = v;
-					case BaseRule.AlignX(Align.FixedM(v)):
-						childPos.x = -(child.size.w / 2) + v;
-					case BaseRule.AlignY(Align.FixedM(v)):
-						childPos.y = -(child.size.h / 2) + v;
-					case BaseRule.AlignX(Align.FixedRB(v)):
-						childPos.x = -child.size.w + v;
-					case BaseRule.AlignY(Align.FixedRB(v)):
-						childPos.y = -child.size.h + v;
-					case _:
-						// Ignore rules we don't know how to handle
-						//trace(rule);
-				}
+			switch(child.settings.alignX) {
+				case Align.FixedLT(v):
+					childPos.x = v;
+				case Align.FixedM(v):
+					childPos.x = -(child.size.w / 2) + v;
+				case Align.FixedRB(v):
+					childPos.x = -child.size.w + v;
+				case Align.PercentLT(v):
+					childPos.x = (size.w * (v/100));
+				case Align.PercentM(v):
+					childPos.x = (size.w * (v/100)) - (child.size.w/2); // Calc to middle of parent node, then move left 1/2 of child node size
+				case Align.PercentRB(v):
+					childPos.x = (size.w * (v/100)) - child.size.w;
+			}
+			switch(child.settings.alignY) {
+				case Align.FixedLT(v):
+					childPos.y = v;
+				case Align.FixedM(v):
+					childPos.y = -(child.size.h / 2) + v;
+				case Align.FixedRB(v):
+					childPos.y = -child.size.h + v;
+				case Align.PercentLT(v):
+					childPos.y = (size.h * (v/100));
+				case Align.PercentM(v):
+					childPos.y = (size.h * (v/100)) - (child.size.h/2); // Calc to middle of parent node, then move left 1/2 of child node size
+				case Align.PercentRB(v):
+					childPos.y = (size.h * (v/100)) - child.size.h;
 			}
 		}
 	}
@@ -211,7 +209,7 @@ class NodeBase implements IBindable  {
 
 		_childPositions.remove(childNode);
 		Bind.unbind(childNode.layoutIsValid, _childLayoutIsValidChanged);
-		Bind.unbind(childNode.layoutIsValid, _childFocusedChanged);
+		Bind.unbind(childNode.focused, _childFocusedChanged);
 		if(childNode.focused) this.focused = false;
 
 		// If child is a mouse listener, detach
@@ -223,10 +221,17 @@ class NodeBase implements IBindable  {
 		return true;
 	}
 
+	/**
+	 *  Reposition child within render list
+	 *  @param childNode - 
+	 *  @param index - 
+	 *  @return Bool
+	 */
 	public function setChildIndex(childNode:NodeBase, index:Int):Bool {
-		if(_childNodes.indexOf(childNode) == -1) return false;
+		if(_childNodes.indexOf(childNode) == -1 || _childNodes.indexOf(childNode) == index) return false;
 		_childNodes.remove(childNode);
 		_childNodes.insert(index, childNode);
+		layoutIsValid = false; // Notify my parent that I have changed
 		return true;
 	}
 
@@ -238,7 +243,9 @@ class NodeBase implements IBindable  {
 
 	private function _childLayoutIsValidChanged(from:Bool, to:Bool) {
 		// Propagate up stack by default - a fixed size container (window/dialog/etc) up the stack can override this and begin layout call back down stack (see Stage for an example)
-		if(!to) layoutIsValid = false;
+		if(!to) {
+			layoutIsValid = false;
+		}
 	}
 
 	private function _childFocusedChanged(from:Bool, to:Bool) {
@@ -246,50 +253,43 @@ class NodeBase implements IBindable  {
 		this.focused = to;
 	}
 
-	public function setLayoutRule(newRule:BaseRule) {
-		// TODO: check for other rules that should be removed during this update
-		var ruleConstructor = Type.enumConstructor(newRule);
-		switch(ruleConstructor) {
-			case "Width", "Height", "HAlign", "VAlign":
-				for(r in layoutRules) {
-					if(Type.enumConstructor(r) == ruleConstructor) {
-						layoutRules.remove(r);
-					}
-				}
-		}
-
-		// Return previous rule if one was removed?
-
-		// Add to end of list so rules get overridden
-		layoutRules.add(newRule);
-
-		// If cursor is changing to non-default begin listening to mouse
-		switch(newRule) {
-			case BaseRule.Cursor(cursorName):
-				mouseSubscribe = true;
-				// Watch mouse and adjust cursor
-				bindx.Bind.bind(this.mouseData.mouseInBounds, _updateCursor);
-			case _:
-		}
-
+	public function _settings_Changed(origin:IBindable, name:String, from:Dynamic, to:Dynamic) {
+		// TODO: only invalidate for settings that cause layout to changes - child classes will need to override this to handle special cases for their class
 		layoutIsValid = false; // Notify parent I need to adjust my layout
 	}
 
+	/**
+	 *  Callback for when settings.cursor changes
+	 *  @param from - 
+	 *  @param to - 
+	 */
+	private function _doCursorChanged(from:String, to:String) {
+		if(to != null) {
+			// Set to a value, subscribe to mouse and start cursor update bind
+			mouseSubscribe = true;
+			Bind.bind(this.mouseData.mouseInBounds, _updateCursor);
+		} else {
+			Bind.unbind(this.mouseData.mouseInBounds, _updateCursor);
+		}
+	}
+
+	/**
+	 *  Callback to update cursor when mouse is in-bounds
+	 *  @param from - 
+	 *  @param to - 
+	 */
 	private function _updateCursor(from:Bool, to:Bool) {
 		if(to == false) {
 			parent.setCursor(null);
 		} else {
-			for(r in layoutRules) {
-				switch(r) {
-					case BaseRule.Cursor(cursorName):
-						parent.setCursor(cursorName);
-					case _:
-						// Ignore other rules
-				}
-			}
+			parent.setCursor(settings.cursor);
 		}
 	}
 
+	/**
+	 *  Pass the new cursor up the stack
+	 *  @param cursorName - 
+	 */
 	public function setCursor(cursorName:String) {
 		// Any validation here?
 		parent.setCursor(cursorName);
@@ -420,13 +420,18 @@ class NodeBase implements IBindable  {
 		// Draw myself - clear to my background color
 		// TODO: this should only clear invalid rects for the area within this node
 		// TODO: background is a layoutRule, should it be cached or loop through all layoutRules during rendering?
-		var bgColor = backgroundColor;
-		if(backgroundColor.A > 0) {
+		if(settings.bgColor.A > 0) {
 			var _c = g2.color;
-			g2.color = bgColor;
+			g2.color = settings.bgColor;
 			g2.fillRect(0,0,size.w,size.h);
 			g2.color = _c;
 		}
+		
+		// Debug rectangle
+		/*var _c = g2.color;
+		g2.color = kha.Color.fromFloats(0,0,0,.2);
+		g2.drawRect(0,0,size.w,size.h);
+		g2.color = _c;*/
 
 		_renderChildren(g2);
 	}
@@ -442,58 +447,13 @@ class NodeBase implements IBindable  {
 			g2.popTransformation();
 		}
 	}
-
-	public var backgroundColor(get, never):kha.Color;
-
-	function get_backgroundColor() {
-		var bgColor = kha.Color.Transparent;
-		for(r in layoutRules) {
-			switch(r) {
-				case BaseRule.BackgroundColor(c):
-					bgColor = c;
-				case _:
-					// Ignore other rules
-			}
-		}
-		return bgColor;
-	}
-
-	public var color(get, never):kha.Color;
-
-	function get_color() {
-		var color = kha.Color.Transparent;
-		for(r in layoutRules) {
-			switch(r) {
-				case BaseRule.Color(c):
-					color = c;
-				case _:
-					// Ignore other rules
-			}
-		}
-		return color;
-	}
 }
 
 /** 
-Use 'standard' 12pt, 16px, 1em, 100% size concept at 96dpi? - for example: https://websemantics.uk/articles/font-size-conversion/
-All font sizes are based on this, font size is float - 1.0 == 1em size
+Use 'standard' 12pt, 16px, 1em, 100% size concept at 96/72dpi? - for example: https://websemantics.uk/articles/font-size-conversion/
+All font sizes would be based on this, font size is float - 1.0 == 1em size
 Width/height sizes are same, 1.0 float == 16px
 **/
-
-enum BaseRule {
-	// Position/size
-	Width(v:LayoutSize);
-	AlignX(v:Align);
-	Height(v:LayoutSize);
-	AlignY(v:Align);
-	
-	// Color
-	BackgroundColor(c:Color);
-	Color(c:Color);
-
-	// Cursor/pointer - in html target, this pushes to the DOM - see cursor names here: https://www.w3schools.com/cssref/playit.asp?filename=playcss_cursor&preval=copy
-	Cursor(name:String);
-}
 
 enum LayoutSize {
 	Fixed(v:Float); // A fixed width
@@ -508,4 +468,19 @@ enum Align {
 	PercentLT(v:Float); // Left or top edge of node is a percent position from left or top of layout area
 	PercentM(v:Float); // Middle of node is a percent position from left of layout area
 	PercentRB(v:Float); // Right or bottom edge of node is a percent position from right or bottom of layout area
+}
+
+@:bindable
+class NodeBaseSettings implements IBindable {
+	public var width:LayoutSize = Fixed(0);
+	public var height:LayoutSize = Fixed(0);
+	public var alignX:Align = PercentM(50);
+	public var alignY:Align = PercentM(50);
+	public var bgColor:Color = kha.Color.Transparent;
+	public var color:Color = kha.Color.Transparent;
+	public var cursor:String = null; // Cursor/pointer - in html target, this pushes to the DOM - see cursor names here: https://www.w3schools.com/cssref/playit.asp?filename=playcss_cursor&preval=copy
+
+	public function new() {
+		// Any init/defaults?
+	}
 }

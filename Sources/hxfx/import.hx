@@ -7,3 +7,5 @@ import bindx.*;
 
 import hxfx.core.*;
 import hxfx.core.data.*;
+import hxfx.core.data.Mouse;
+import hxfx.core.data.Shared;

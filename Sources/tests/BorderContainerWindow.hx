@@ -6,10 +6,13 @@ import hxfx.display.*;
 import hxfx.core.data.Position;
 import bindx.*;
 
+typedef PostionExt = {>PositionDef,
+	var z : Float;
+}
 
 class BorderContainerWindow extends Window {
 
-	var testBind:Position;
+	var testBind:PostionExt;
 
 	public static function main() {
 		new BorderContainerWindow("HxFx Test - BorderContainerWindow");
@@ -43,8 +46,8 @@ class BorderContainerWindow extends Window {
 
 		bordered.parent = stage;
 
-		testBind = new Position({x:0, y:0});
-		Bind.bind(testBind.x, _testBind2);
+		testBind = {x:0, y:0, z:0};
+		Bind.bindAll(this.testBind, _testBind);
 
 		kha.Scheduler.addTimeTask(randomPosChange, 0, 1);
 	}

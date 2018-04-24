@@ -12,38 +12,53 @@ class ScaleGridWindow extends Window {
 	override function onInit() {
 		super.onInit();
 
-		stage.setLayoutRule(BackgroundColor(kha.Color.White));
+		stage.settings.bgColor = kha.Color.White;
 
 		// Create a 3x3 grid with edges that are fixed, fill middle - a typical border layout
 		var gridDisplay = new GridContainer(3, 3);
 
 		// Make the grid fill the container
-		gridDisplay.setLayoutRule(Width(LayoutSize.Percent(100)));
-		gridDisplay.setLayoutRule(Height(LayoutSize.Percent(100)));
+		gridDisplay.settings.width = Percent(100);
+		gridDisplay.settings.height = Percent(100);
+		gridDisplay.settings.bgColor = kha.Color.fromFloats(0,1,0,.2);
+
+		var borderSize = 50;
 
 		// Set the top row to 50px tall and fixed to top
-		gridDisplay.setRowLayoutRule(0, Height(LayoutSize.Fixed(50)));
-		gridDisplay.setRowLayoutRule(0, BaseRule.VAlign(Align.PercentLT(0)));
+		for(c in gridDisplay.getRowCells(0)) {
+			c.settings.height = Fixed(borderSize);
+			c.settings.alignY = PercentLT(0);
+		}
 
 		// Set the bottom row to 50px tall and fixed to bottom
-		gridDisplay.setRowLayoutRule(2, Height(LayoutSize.Fixed(50)));
-		gridDisplay.setRowLayoutRule(2, BaseRule.VAlign(Align.PercentRB(100)));
+		for(c in gridDisplay.getRowCells(2)) {
+			c.settings.height = Fixed(borderSize);
+			c.settings.alignY = PercentRB(100);
+		}
 
 		// Set the left column to 50px width and fixed to left
-		gridDisplay.setColumnLayoutRule(0, Width(LayoutSize.Fixed(50)));
-		gridDisplay.setColumnLayoutRule(0, BaseRule.HAlign(Align.PercentLT(0)));
+		for(c in gridDisplay.getColumnCells(0)) {
+			c.settings.width = Fixed(borderSize);
+			c.settings.alignX = PercentLT(0);
+		}
 
-		// Set the left column to 50px width and fixed to right
-		gridDisplay.setColumnLayoutRule(2, Width(LayoutSize.Fixed(50)));
-		gridDisplay.setColumnLayoutRule(2, BaseRule.HAlign(Align.PercentRB(100)));
+		// Set the right column to 50px width and fixed to right
+		for(c in gridDisplay.getColumnCells(2)) {
+			c.settings.width = Fixed(borderSize);
+			c.settings.alignX = PercentRB(100);
+		}
 
 		// Set the middle row to fill the remaining space
-		gridDisplay.setRowLayoutRule(1, Height(LayoutSize.PercentLessFixed(100, 100)));
-		gridDisplay.setRowLayoutRule(1, BaseRule.VAlign(Align.FixedLT(50)));
+		for(c in gridDisplay.getRowCells(1)) {
+			c.settings.height = PercentLessFixed(100, borderSize*2);
+			c.settings.alignY = PercentM(50);
+		}
 
 		// Set the middle column to fill the remaining space
-		gridDisplay.setColumnLayoutRule(1, Width(LayoutSize.PercentLessFixed(100, 100)));
-		gridDisplay.setColumnLayoutRule(1, BaseRule.HAlign(Align.FixedLT(50)));
+		for(c in gridDisplay.getColumnCells(1)) {
+			c.settings.width = PercentLessFixed(100, borderSize*2);
+			c.settings.alignX = PercentM(50);
+		}
 
 		gridDisplay.parent = stage;
 	}

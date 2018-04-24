@@ -1,7 +1,42 @@
 package hxfx.core.data;
 
-import hxfx.core.data.Position;
-import hxfx.core.data.Size;
+typedef PositionDef = {
+	?x:Float,
+	?y:Float
+}
+
+@:bindable
+class Position implements IBindable  {
+	public var x:Float = 0;
+	public var y:Float = 0;
+
+	public function new(position:PositionDef) {
+		if(position.x != null)
+			this.x = position.x;
+
+		if(position.y != null)
+			this.y = position.y;
+	}
+}
+
+typedef SizeDef = {
+	?w:Float,
+	?h:Float
+}
+
+@:bindable
+class Size implements IBindable  {
+	public var w:Float = 0;
+	public var h:Float = 0;
+
+	public function new(size:SizeDef) {
+		if(size.w != null)
+			this.w = size.w;
+
+		if(size.h != null)
+			this.h = size.h;
+	}
+}
 
 typedef RectDef = {
 	?position:PositionDef,

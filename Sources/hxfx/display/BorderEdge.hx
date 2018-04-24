@@ -21,8 +21,8 @@ class BorderEdge extends NodeBase {
 		switch(edge) {
 			case Top:
 				// Set the top row to w tall and fixed to top
-				setLayoutRule(Height(LayoutSize.Fixed(container.borderWidth)));
-				setLayoutRule(BaseRule.AlignY(Align.PercentLT(0)));
+				settings.height = Fixed(container.borderWidth);
+				settings.alignY = PercentLT(0);
 			case _:
 		}
     }
@@ -30,8 +30,8 @@ class BorderEdge extends NodeBase {
 	override public function render(g2: Graphics): Void {
 		super.render(g2);
 
-		if(color.A > 0) {
-			g2.color = color;
+		if(settings.color.A > 0) {
+			g2.color = settings.color;
 			
 			trace(edge);
 			switch(edge) {

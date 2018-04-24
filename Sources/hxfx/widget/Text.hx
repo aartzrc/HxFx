@@ -12,14 +12,17 @@ class Text extends NodeBase {
 	public static var fontGlyphs:Array<Int>; // The Kha graphics font glyphs
 	public static var addFontGlyphs:Array<Int>; // Glyphs to add during next render
 
-	public var fontRules(default,null):List<FontRule>;
-
 	public function new() {
-		super();
-		fontRules = new List<FontRule>();
+		super(new FontSettings());
 		fontGlyphs = new Array<Int>();
 		addFontGlyphs = new Array<Int>();
 		Bind.bind(this.text, doTextChange);
+	}
+
+	public var fontSettings(get,never):FontSettings;
+
+	public function get_fontSettings() {
+		return cast settings;
 	}
 
 	public function doTextChange(from:String, to:String) {
@@ -43,12 +46,12 @@ class Text extends NodeBase {
 	public static override function calcSize(textNode:Text, size:Size) {
 		// Determine what size I want to be based on text size
 		// Ignore most layout rules, the parent container will handle positioning
-		var useFont = textNode.font;
-		var useFontSize = textNode.fontSize;
+		var useFont = textNode.fontSettings.font;
+		var useFontSize = Math.round(textNode.fontSettings.fontSize);
 
 		if(useFont != null) {
-			size.h = textNode.font.height(useFontSize);
-			size.w = textNode.font.width(useFontSize, textNode.text);
+			size.h = useFont.height(useFontSize);
+			size.w = useFont.width(useFontSize, textNode.text);
 		} else {
 			// No font? fake some size
 			size.h = useFontSize;
@@ -59,93 +62,14 @@ class Text extends NodeBase {
 	}
 
 	public var characterRects(get,never):Array<Rect>;
-
-	var font(get,never):Font;
-
-	function get_font() {
-		var useFont:Font = null;
-		for(r in fontRules) {
-			switch(r) {
-				case FontRule.Font(f):
-					useFont = f;
-				case _:
-					// Ignore other rules
-			}
-
-			if(useFont != null) break;
-		}
-
-		return useFont;
-	}
-
-	var fontSize(get, never):Int;
-
-	function get_fontSize() {
-		// TODO: calculate font size using scale/dpi settings - etc etc
-		var fontSize:Float = 16;
-		for(r in fontRules) {
-			switch(r) {
-				case FontRule.FontSize(v):
-					fontSize = v;
-				case _:
-					// Ignore other rules
-			}
-		}
-
-		return Math.round(fontSize);
-	}
-
-	var color(get, never):kha.Color;
-
-	function get_color() {
-		var color = kha.Color.Transparent;
-		for(r in layoutRules) {
-			switch(r) {
-				case BaseRule.Color(c):
-					color = c;
-				case _:
-					// Ignore other rules
-			}
-		}
-
-		return color;
-	}
-
-	public function setFontRule(newRule:FontRule) {
-		var ruleConstructor = Type.enumConstructor(newRule);
-		trace(ruleConstructor);
-		// TODO: check for other rules that should be removed during this update
-		switch(ruleConstructor) {
-			case "Font":
-				for(r in fontRules) {
-					if(Type.enumConstructor(r) == ruleConstructor) {
-						fontRules.remove(r);
-					}
-				}
-		}
-
-		// Clear cache if font changes
-		switch(newRule) {
-			case FontRule.Font(_), FontRule.FontSize(_):
-				charRects = new Array<Rect>();
-			case _:
-				// Ignore
-		}
-
-		fontRules.add(newRule);
-
-		// Notify parent of the change
-		layoutIsValid = false;
-	}
 	
 	var charRects:Array<Rect> = new Array<Rect>();
 	function get_characterRects() {
 		// Check for cache
 		if(charRects.length>0) return charRects;
 		
-		// Try to get the font
-		var useFont = font;
-		var useFontSize = fontSize;
+		var useFont = fontSettings.font;
+		var useFontSize = Math.round(fontSettings.fontSize);
 		var x:Float = 0;
 
 		if(useFont != null) {
@@ -175,11 +99,11 @@ class Text extends NodeBase {
 	override public function render(g2: Graphics): Void {
 		super.render(g2);
 
-		var useFont = font;
+		var useFont = fontSettings.font;
 
 		if(useFont != null) {
 			g2.font = useFont;
-			g2.fontSize = fontSize;
+			g2.fontSize = Math.round(fontSettings.fontSize);
 			if(addFontGlyphs.length > 0) {
 				for(i in addFontGlyphs) { // Check for extra font glyphs that are not in the current set
 					if(g2.fontGlyphs.indexOf(i) == -1)
@@ -189,7 +113,7 @@ class Text extends NodeBase {
 				addFontGlyphs = new Array<Int>(); // Clear the additions
 			}
 			
-			g2.color = color;
+			g2.color = settings.color;
 			g2.drawString(text, 0, 0);
 
 			// Draw character rectangles - debug
@@ -201,8 +125,8 @@ class Text extends NodeBase {
 	}
 }
 
-enum FontRule {
-	// Font
-	Font(f:kha.Font);
-	FontSize(s:Float);
+@:bindable
+class FontSettings extends NodeBaseSettings implements IBindable {
+	public var font:kha.Font;
+	public var fontSize:Float;
 }

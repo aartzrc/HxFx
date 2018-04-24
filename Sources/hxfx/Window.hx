@@ -52,8 +52,8 @@ class Window implements IBindable {
 	private function onInit() {
 		// Create the stage - fill all available window space
 		stage = new Stage(this);
-		stage.setLayoutRule(Width(Percent(100)));
-		stage.setLayoutRule(Height(Percent(100)));
+		stage.settings.width = Percent(100);
+		stage.settings.height = Percent(100);
 
 #if debug
 		mouse = new hxfx.core.data.Mouse(windowId);

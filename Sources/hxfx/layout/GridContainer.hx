@@ -9,80 +9,74 @@ Use setGridRule to change column/row proportions
 @:bindable
 class GridContainer extends AbsoluteContainer {
 	
-	var _xColCount:Int;
-	var _yColCount:Int;
+	public var columns(default, null):Int;
+	public var rows(default, null):Int;
 	var _gridNodes:Array<NodeBase> = [];
 
-	public function new(xColumns:Int, yColumns:Int) {
+	public function new(columns:Int, rows:Int) {
 		super();
 
-		_xColCount = xColumns;
-		_yColCount = yColumns;
+		this.columns = columns;
+		this.rows = rows;
 
 		// Set up default the grid cells
-		for(x in 0 ... _xColCount) {
-			for(y in 0 ... _yColCount) {
-				setCell(null, x, y);
+		for(x in 0 ... columns) {
+			for(y in 0 ... rows) {
+				_initCell(null, x, y);
 			}
 		}
 	}
 
-	/**
-	 *  Helper to set all child nodes in a column
-	 *  @param col - 
-	 *  @param rule - 
-	 */
-	public function setColumnLayoutRule(col:Int, rule:BaseRule) {
-		for(y in 0 ... _yColCount) {
-			getCell(col, y).setLayoutRule(rule);
+	public function getRowCells(row:Int):Array<NodeBase> {
+		var cells = new Array<NodeBase>();
+		for(i in 0 ... columns) {
+			cells.push(getCell(i, row));
 		}
+		return cells;
 	}
 
-	/**
-	 *  Helper to set all child nodes in a row
-	 *  @param row - 
-	 *  @param rule - 
-	 */
-	public function setRowLayoutRule(row:Int, rule:BaseRule) {
-		for(x in 0 ... _xColCount) {
-			getCell(x, row).setLayoutRule(rule);
+	public function getColumnCells(column:Int):Array<NodeBase> {
+		var cells = new Array<NodeBase>();
+		for(i in 0 ... rows) {
+			cells.push(getCell(column, i));
 		}
+		return cells;
 	}
-
+	
 	public function getCell(x:Int, y:Int):NodeBase {
-		if(x>=0 && x<_xColCount && y>=0 && y<_yColCount) {
-			var index = (y * _xColCount) + x;
+		if(x>=0 && x<columns && y>=0 && y<rows) {
+			var index = (y * columns) + x;
 			return _gridNodes[index];
 		}
 		return null;
 	}
 
-	public function setCell(cell:NodeBase, x:Int, y:Int) {
-		var w:Float = 100/_xColCount;
-		var h:Float = 100/_yColCount;
-		if(x>=0 && x<_xColCount && y>=0 && y<_yColCount) {
+	private function _initCell(cell:NodeBase, x:Int, y:Int) {
+		var w:Float = 100/columns;
+		var h:Float = 100/rows;
+		if(x>=0 && x<columns && y>=0 && y<rows) {
 			// Keep track of containers
-			var index = (y * _xColCount) + x;
+			var index = (y * columns) + x;
 			if(_gridNodes[index] != null) {
 				_gridNodes[index].parent = null; // Detach previous cell from parent
 			}
 			if(cell == null) {
 				// By default create an AbsoluteContainer that fills the grid block
 				cell = new AbsoluteContainer();
-				cell.setLayoutRule(BaseRule.Width(LayoutSize.Percent(w)));
-				cell.setLayoutRule(BaseRule.Height(LayoutSize.Percent(h)));
-				cell.setLayoutRule(BaseRule.AlignX(Align.PercentLT(w * x)));
-				cell.setLayoutRule(BaseRule.AlignY(Align.PercentLT(h * y)));
+				cell.settings.width = Percent(w);
+				cell.settings.height = Percent(h);
+				cell.settings.alignX = PercentLT(w * x);
+				cell.settings.alignY = PercentLT(h * y);
 
 				// Debug test, flip background colors of the grid
-				/*var xMod = x % 2;
+				var xMod = x % 2;
 				var yMod = y % 2;
 				var fMod = (xMod+yMod) % 2;
 				if(fMod == 1) {
-					gridNode.setLayoutRule(BaseRule.BackgroundColor(kha.Color.fromFloats(0,0,0,.3)));
+					cell.settings.bgColor = kha.Color.fromFloats(0,0,0,.3);
 				} else {
-					gridNode.setLayoutRule(BaseRule.BackgroundColor(kha.Color.fromFloats(0,0,0,.1)));
-				}*/
+					cell.settings.bgColor = kha.Color.fromFloats(0,0,0,.1);
+				}
 			}
 			_gridNodes[index] = cell;
 			cell.parent = this;

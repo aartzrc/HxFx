@@ -25,23 +25,22 @@ class SimpleWindow extends Window {
 		{
 			//text.setFontRule(FontRule.Font(arial));
 			for(t in textFields) {
-				t.setFontRule(FontRule.Font(arial));
+				t.fontSettings.font = arial;
 			}
 		});
 
 		// Any way to block the array from modification?
 		//stage.layoutRules.push(bgColor);
-		stage.setLayoutRule(BackgroundColor(kha.Color.White));
+		stage.settings.bgColor = kha.Color.White;
 
 		//var block = new AbsoluteContainer();
 		var block = new BorderContainer();
 		block.setBorderRule(Color(kha.Color.Blue));
-		block.setLayoutRule(BackgroundColor(kha.Color.fromFloats(0,0,0,.15)));
-		block.setLayoutRule(Width(LayoutSize.Percent(50)));
-		block.setLayoutRule(Height(LayoutSize.Fixed(30)));
-		//block.setLayoutRule(Width(LayoutSize.Fixed(150)));
-		block.setLayoutRule(AlignX(Align.PercentM(50)));
-		block.setLayoutRule(AlignY(Align.PercentM(25)));
+		block.settings.bgColor = kha.Color.fromFloats(0,0,0,.15);
+		block.settings.width = Percent(50);
+		block.settings.height = Fixed(30);
+		block.settings.alignX = PercentM(50);
+		block.settings.alignY = PercentM(25);
 		//block.setLayoutRule(Cursor("pointer"));
 
 		textFields = new Array<TextField>();
@@ -52,14 +51,14 @@ class SimpleWindow extends Window {
 			text.text = "Get the currently highlighted text";
 			//trace(text.text);
 			//text.text = "test";
-			text.setLayoutRule(Color(kha.Color.Black));
-			text.setFontRule(FontSize(20));
+			text.settings.color = kha.Color.Black;
+			text.fontSettings.fontSize = 20;
 			//text.setLayoutRule(HAlign(Align.PercentMiddle(50)));
 			//text.setLayoutRule(HAlign(Align.FixedLT(10)));
 			//text.setLayoutRule(VAlign(Align.PercentMiddle(50)));
 			//text.setLayoutRule(VAlign(Align.FixedM(i*10)));
 			//text.setLayoutRule(HAlign(Align.FixedLT(i%10 * 100)));
-			text.setLayoutRule(Cursor("text"));
+			text.settings.cursor = "text";
 
 			textFields.push(text);
 

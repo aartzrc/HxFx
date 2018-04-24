@@ -45,25 +45,11 @@ class BorderContainer extends GridContainer {
 	}
 
 	function _doColorChanged(from:Color, to:Color) {
-		var newC = BaseRule.Color(to);
-		left.setLayoutRule(newC);
-		right.setLayoutRule(newC);
-		top.setLayoutRule(newC);
-		bottom.setLayoutRule(newC);
-	}
-
-	override public function setLayoutRule(newRule:BaseRule) {
-		// Pass background color down the chain
-		switch(newRule) {
-			case BaseRule.BackgroundColor(c):
-				left.setLayoutRule(newRule);
-				right.setLayoutRule(newRule);
-				top.setLayoutRule(newRule);
-				bottom.setLayoutRule(newRule);
-			case _:
-		}
-
-		super.setLayoutRule(newRule);
+		// Pass the color to borders
+		left.settings.color = to;
+		right.settings.color = to;
+		top.settings.color = to;
+		bottom.settings.color = to;
 	}
 
 	public function setBorderRule(newRule:BorderRule) {
