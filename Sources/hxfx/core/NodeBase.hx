@@ -14,7 +14,49 @@ The basic concept is:
 
 class NodeBase implements IBindable  {
 	public static var debug:Bool = false;
-
+	//flash abstractions
+	public var visible:Bool;
+	@:isVar
+	public var x(get, set):Float;
+	@:isVar
+	public var y(get, set):Float;
+	private var offsetY:Float;
+	public var width(get, set):Float;
+	private var _width_:Float;
+	@:isVar
+    public var height(get, set):Float;
+	private var _height_:Float;
+	 function get_width():Float{
+        return _width_; 
+    }
+    function set_width(w):Float{
+        return _width_; 
+    }
+     function get_height():Float{
+        return _height_; 
+    }
+    function set_height(w):Float{
+        return _height_; 
+    }
+    function get_x() {
+		return x;
+	}
+	function set_x(_x) {
+		x=Math.floor(_x);
+		//this.setLayoutRule(HAlign(Align.FixedLT(_x)));
+		this.settings.alignX=FixedLT(_x);
+		return x;
+	}
+	function get_y() {
+		return y;
+	}
+	function set_y(_y) {
+		y=Math.floor(_y);
+		this.settings.alignY=FixedLT(_y);
+		//this.setLayoutRule(VAlign(Align.FixedLT(_y)));		
+		return y ;
+	}
+//flash abstractions
 	@:bindable
 	public var settings:NodeBaseSettings;
 	@:bindable(force)
