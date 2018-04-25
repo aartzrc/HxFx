@@ -16,8 +16,6 @@ class TextField extends Text {
 	var _cursorBlinkTask:Int = -1;
 	var _cursorBlinkState:Bool = false;
 
-	public static var wordWrapCharacters:Array<Int> = [32, 189]; // Space, dash
-
 	public function new() {
 		super();
 
@@ -80,14 +78,14 @@ class TextField extends Text {
 		if(to && mouseData.mouseInBounds) {
 			// Get the left position
 			var _newPos = _cursorPos;
-			while(_newPos>=0 && wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos--;
+			while(_newPos>=0 && Text.wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos--;
 			if(_newPos<0) _newPos = 0;
 				else _newPos++;
 			_startHighlightChar = _newPos;
 			
 			// Get the right position
 			_newPos = _cursorPos;
-			while(_newPos<=charCodes.length && wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos++;
+			while(_newPos<=charCodes.length && Text.wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos++;
 			if(_newPos>charCodes.length) _newPos = charCodes.length;
 			_endHighlightChar = _newPos;
 
@@ -174,7 +172,7 @@ class TextField extends Text {
 					case KeyCode.Left if (control && shift): // Ctrl + shift + left
 						if(_startHighlightChar == -1 ) _startHighlightChar = _cursorPos;
 						var _newPos = _cursorPos-2;
-						while(_newPos>=0 && wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos--;
+						while(_newPos>=0 && Text.wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos--;
 						if(_newPos<0) _newPos = 0;
 							else _newPos++;
 						_cursorPos = _newPos;
@@ -183,7 +181,7 @@ class TextField extends Text {
 					case KeyCode.Right if (control && shift): // Ctrl + shift + right
 						if(_startHighlightChar == -1 ) _startHighlightChar = _cursorPos;
 						var _newPos = _cursorPos+1;
-						while(_newPos<=charCodes.length && wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos++;
+						while(_newPos<=charCodes.length && Text.wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos++;
 						if(_newPos>charCodes.length) _newPos = charCodes.length;
 						_cursorPos = _newPos;
 						_endHighlightChar = _cursorPos;
@@ -228,7 +226,7 @@ class TextField extends Text {
 						case KeyCode.Left if (control && shift): // Ctrl + shift + left
 							_startHighlightChar = _cursorPos;
 							var _newPos = _cursorPos-2;
-							while(_newPos>=0 && wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos--;
+							while(_newPos>=0 && Text.wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos--;
 							if(_newPos<0) _newPos = 0;
 								else _newPos++;
 							_cursorPos = _newPos;
@@ -237,7 +235,7 @@ class TextField extends Text {
 						case KeyCode.Right if (control && shift): // Ctrl + shift + right
 							_startHighlightChar = _cursorPos;
 							var _newPos = _cursorPos+1;
-							while(_newPos<=charCodes.length && wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos++;
+							while(_newPos<=charCodes.length && Text.wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos++;
 							if(_newPos>charCodes.length) _newPos = charCodes.length;
 							_cursorPos = _newPos;
 							_endHighlightChar = _cursorPos;
@@ -249,7 +247,7 @@ class TextField extends Text {
 							_cursorBlinkState = true;
 						case KeyCode.Left if (control): // Ctrl + left
 							var _newPos = _cursorPos-2;
-							while(_newPos>=0 && wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos--;
+							while(_newPos>=0 && Text.wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos--;
 							if(_newPos<0) _newPos = 0;
 								else _newPos++;
 							_cursorPos = _newPos;
@@ -261,7 +259,7 @@ class TextField extends Text {
 							_cursorBlinkState = true;
 						case KeyCode.Right if (control): // Ctrl + right
 							var _newPos = _cursorPos+1;
-							while(_newPos<=charCodes.length && wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos++;
+							while(_newPos<=charCodes.length && Text.wordWrapCharacters.indexOf(charCodes[_newPos]) == -1) _newPos++;
 							if(_newPos>charCodes.length) _newPos = charCodes.length;
 							_cursorPos = _newPos;
 							_cursorBlinkState = true;

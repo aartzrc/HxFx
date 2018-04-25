@@ -2,14 +2,15 @@ package tests;
 
 import hxfx.Window;
 import hxfx.layout.*;
+import hxfx.widget.TextField;
 
 class BorderContainerWindow extends Window {
-
 	public static function main() {
 		new BorderContainerWindow("HxFx Test - BorderContainerWindow");
 	}
 
 	var bordered:BorderContainer;
+	var textField:TextField;
 
 	override function onInit() {
 		super.onInit();
@@ -34,17 +35,26 @@ class BorderContainerWindow extends Window {
 
 		bordered.borderContainerSettings.resizeable = true;
 
-        /*var arc = new ArcQuadrant();
-        arc.setArcRule(Radius(50));
-        arc.setArcRule(Width(5));
-        arc.setLayoutRule(Color(kha.Color.Black));
-        arc.setLayoutRule(BackgroundColor(kha.Color.White));
-        arc.parent = bordered.viewport;*/
+		textField = new TextField();
+		textField.text = "some random crap some random crap some random crap some random crap";
+		textField.settings.color = kha.Color.Black;
+		textField.fontSettings.fontSize = 24;
+		textField.settings.width=Percent(100);
+		textField.settings.height=Percent(100);
+		textField.settings.alignX=FixedLT(5);
+		textField.settings.alignY=FixedLT(5);
+		textField.fontSettings.wordWrap = true;
+		textField.parent = bordered.viewport;
 
 		bordered.parent = stage;
 
 		//kha.Scheduler.addTimeTask(randomRadiusChange, 0, .02);
 		//kha.Scheduler.addTimeTask(randomWidthChange, 0, .05);
+
+		kha.Assets.loadFont("arial", function(arial:kha.Font)
+		{
+			textField.fontSettings.font = arial;
+		});
 	}
 
 	var incDec:Float = .25;

@@ -2,8 +2,12 @@ package hxfx.widget;
 
 import hxfx.core.NodeBase;
 
+using StringTools;
+
 @:bindable
 class Text extends NodeBase {
+	public static var wordWrapCharacters:Array<Int> = [32, 189]; // Space, dash
+
 	public var text:String = "";
 	var charCodes:Array<Int>;
 
@@ -36,6 +40,7 @@ class Text extends NodeBase {
 		//trace(fontGlyphs.length);
 
 		charRects = new Array<Rect>(); // Clear cache
+		_wrapIndexes = null; // Clear cache
 		layoutIsValid = false; // I changed, notify my parent
 	}
 
@@ -46,19 +51,95 @@ class Text extends NodeBase {
 	public static override function calcSize(textNode:Text, size:Size) {
 		// Determine what size I want to be based on text size
 		// Ignore most layout rules, the parent container will handle positioning
-		var useFont = textNode.fontSettings.font;
-		var useFontSize = Math.round(textNode.fontSettings.fontSize);
+		if(!textNode.fontSettings.wordWrap) {
+			return stringSize(textNode, textNode.text);
+		} else {
+			var wrapStrings = wrapStrings(textNode, size);
+			var newSize = new Size({w:0, h:textNode.fontSettings.fontSize*wrapStrings.length});
+			// Get wrap chunks, find max width
+			for(c in wrapStrings) {
+				var chunkSize = stringSize(textNode, c);
+				if(chunkSize.w > newSize.w) newSize.w = chunkSize.w;
+			}
 
-		if(useFont != null) {
-			size.h = useFont.height(useFontSize);
-			size.w = useFont.width(useFontSize, textNode.text);
+			return newSize;
+		}
+	}
+
+	private static function stringSize(textNode:Text, text:String) {
+		var stringSize:Size = new Size({w:0, h:0});
+		if(textNode.fontSettings.font != null) {
+			stringSize.h = textNode.fontSettings.font.height(Math.round(textNode.fontSettings.fontSize));
+			stringSize.w = textNode.fontSettings.font.width(Math.round(textNode.fontSettings.fontSize), text);
 		} else {
 			// No font? fake some size
-			size.h = useFontSize;
-			size.w = (11.5*(useFontSize/16)) * textNode.text.length;
+			stringSize.h = textNode.fontSettings.fontSize;
+			stringSize.w = (11.5*(textNode.fontSettings.fontSize/16)) * text.length;
+		}
+		return stringSize;
+	}
+
+	public static function wrapStrings(textNode:Text, size:Size) {
+		var wrapStrings = new Array<String>();
+
+		// Loop over text chunks - wrap when we hit an edge
+		var lastWrapPos = 0;
+		var lastString = "";
+		for(i in textNode.wrapIndexes) {
+			var tryString = textNode.text.substring(lastWrapPos, i.end);
+			var trySize = stringSize(textNode, tryString);
+			if(trySize.w > size.w) {
+				// Text has exceeded width, time to wrap!
+				// Store the string
+				wrapStrings.push(lastString.rtrim());
+				// Update the position
+				lastWrapPos = i.begin;
+				// Reset the string
+				lastString = "";
+			} else {
+				lastString = tryString;
+			}
 		}
 
-		return size;
+		// Store the last chunk
+		wrapStrings.push(textNode.text.substr(lastWrapPos));
+
+		return wrapStrings;
+	}
+
+	public var wrapIndexes(get, never):Array<WrapChunk>;
+
+	var _wrapIndexes:Array<WrapChunk>;
+	function get_wrapIndexes() {
+		// Check cache
+		if(_wrapIndexes != null) return _wrapIndexes;
+
+		// Build the chunks
+		// TODO: this is heavy, is there a split routine that would work better?
+		_wrapIndexes = new Array<WrapChunk>();
+		var curString:String = "";
+		var lastPos = 0;
+		for(i in 0 ... text.length) {
+			curString+=text.charAt(i);
+			if(wordWrapCharacters.indexOf(text.charCodeAt(i)) != -1) {
+				// Found a wrap location, save it
+				var t = curString.length;
+				curString = curString.trim(); // Ignore spaces
+				if(curString.length>0) {
+					_wrapIndexes.push({begin:lastPos, end:lastPos+curString.length});
+				}
+				lastPos+=t;
+				curString = "";
+			}
+		}
+
+		// Grab the last chunk
+		curString = curString.trim(); // Ignore spaces
+		if(curString.length>0) {
+			_wrapIndexes.push({begin:lastPos, end:lastPos+curString.length});
+		}
+
+		return _wrapIndexes;
 	}
 
 	public var characterRects(get,never):Array<Rect>;
@@ -114,7 +195,16 @@ class Text extends NodeBase {
 			}
 			
 			g2.color = settings.color;
-			g2.drawString(text, 0, 0);
+
+			if(!fontSettings.wordWrap) {
+				g2.drawString(text, 0, 0);
+			} else {
+				var row = 0;
+				for(c in wrapStrings(this, size)) {
+					g2.drawString(c, 0, row*fontSettings.fontSize);
+					row++;
+				}
+			}
 
 			// Draw character rectangles - debug
 			/*g2.color = kha.Color.fromFloats(0,0,0,.15);
@@ -128,5 +218,8 @@ class Text extends NodeBase {
 @:bindable
 class FontSettings extends NodeBaseSettings implements IBindable {
 	public var font:kha.Font;
-	public var fontSize:Float;
+	public var fontSize:Float = 16;
+	public var wordWrap:Bool = false;
 }
+
+typedef WrapChunk = {begin:Int, end:Int};
