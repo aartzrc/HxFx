@@ -35,7 +35,7 @@ class SimpleWindow extends Window {
 
 		//var block = new AbsoluteContainer();
 		var block = new BorderContainer();
-		block.setBorderRule(Color(kha.Color.Blue));
+		//block.setBorderRule(Color(kha.Color.Blue));
 		block.settings.bgColor = kha.Color.fromFloats(0,0,0,.15);
 		block.settings.width = Percent(50);
 		block.settings.height = Fixed(30);

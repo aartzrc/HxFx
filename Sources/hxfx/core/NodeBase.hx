@@ -11,7 +11,10 @@ The basic concept is:
 4. When all layoutToSize calls complete the child will set layoutIsValid to true, which triggers the fixed size container to push a dirty rectangle up the stack
 5. At the top of the stack (window/stage), the dirty rectangle is accepted and render engine processes
 **/
+
 class NodeBase implements IBindable  {
+	public static var debug:Bool = false;
+
 	@:bindable
 	public var settings:NodeBaseSettings;
 	@:bindable(force)
@@ -86,7 +89,10 @@ class NodeBase implements IBindable  {
 		layoutSize = newLayoutSize;
 
 		// Update the size this node will use for display
-		size = _calcSize(newLayoutSize);
+		var newSize = _calcSize(newLayoutSize);
+		// Copy values to bindings are maintained
+		size.w = newSize.w;
+		size.h = newSize.h;
 
 		// Update my children based on the final size calculated
 		_calcChildLayout();
@@ -123,6 +129,9 @@ class NodeBase implements IBindable  {
 			case LayoutSize.PercentLessFixed(p, f):
 				newSize.h = (layoutSize.h - f) * (p/100);
 		}
+
+		if(newSize.w < 0) newSize.w = 0;
+		if(newSize.h < 0) newSize.h = 0;
 
 		return newSize;
 	}
@@ -428,10 +437,12 @@ class NodeBase implements IBindable  {
 		}
 		
 		// Debug rectangle
-		/*var _c = g2.color;
-		g2.color = kha.Color.fromFloats(0,0,0,.2);
-		g2.drawRect(0,0,size.w,size.h);
-		g2.color = _c;*/
+		if(debug) {
+			var _c = g2.color;
+			g2.color = kha.Color.fromFloats(0,0,0,.2);
+			g2.drawRect(0,0,size.w,size.h);
+			g2.color = _c;
+		}
 
 		_renderChildren(g2);
 	}

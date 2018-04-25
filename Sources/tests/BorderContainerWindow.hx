@@ -2,40 +2,33 @@ package tests;
 
 import hxfx.Window;
 import hxfx.layout.*;
-import hxfx.display.*;
-import hxfx.core.data.Position;
-import bindx.*;
-
-typedef PostionExt = {>PositionDef,
-	var z : Float;
-}
 
 class BorderContainerWindow extends Window {
-
-	var testBind:PostionExt;
 
 	public static function main() {
 		new BorderContainerWindow("HxFx Test - BorderContainerWindow");
 	}
 
+	var bordered:BorderContainer;
+
 	override function onInit() {
 		super.onInit();
 
-		stage.setLayoutRule(BackgroundColor(kha.Color.White));
+		//hxfx.core.NodeBase.debug = true; // Debug
 
-		var bordered = new BorderContainer();
+		stage.settings.bgColor = kha.Color.White;
+
+		bordered = new BorderContainer();
 
         // Fill some space
-		bordered.setLayoutRule(Width(LayoutSize.Percent(50)));
-		bordered.setLayoutRule(Height(LayoutSize.Percent(50)));
-        bordered.setLayoutRule(AlignX(PercentM(50)));
-		bordered.setLayoutRule(AlignY(PercentM(50)));
+		bordered.settings.width = LayoutSize.Percent(50);
+		bordered.settings.height = Percent(50);
 
-        bordered.setLayoutRule(BackgroundColor(kha.Color.Red));
+        bordered.settings.bgColor = kha.Color.fromFloats(.8,.8,.8,1);
 
-        bordered.setBorderRule(Color(kha.Color.Blue));
-        bordered.setBorderRule(Width(5));
-		//bordered.setBorderRule(CornerRadius(20));
+        bordered.borderContainerSettings.borderColor = kha.Color.Black;
+        bordered.borderContainerSettings.borderWidth = 2;
+		bordered.borderContainerSettings.borderCornerRadius = 6;
 
         /*var arc = new ArcQuadrant();
         arc.setArcRule(Radius(50));
@@ -46,21 +39,22 @@ class BorderContainerWindow extends Window {
 
 		bordered.parent = stage;
 
-		testBind = {x:0, y:0, z:0};
-		Bind.bindAll(this.testBind, _testBind);
-
-		kha.Scheduler.addTimeTask(randomPosChange, 0, 1);
+		//kha.Scheduler.addTimeTask(randomRadiusChange, 0, .02);
+		//kha.Scheduler.addTimeTask(randomWidthChange, 0, .05);
 	}
 
-	function _testBind2(from:Float, to:Float) {
-		trace(from + " : " + to);
+	var incDec:Float = .25;
+	public function randomRadiusChange() {
+		//bordered.borderContainerSettings.borderCornerRadius = Std.random(50);
+		bordered.borderContainerSettings.borderCornerRadius += incDec;
+		if(bordered.borderContainerSettings.borderCornerRadius > 50 || bordered.borderContainerSettings.borderCornerRadius <= 1) incDec *=-1;
+		//if(bordered.borderContainerSettings.borderCornerRadius >= bordered.borderContainerSettings.borderWidth || bordered.borderContainerSettings.borderCornerRadius < 0) incDec *=-1;
 	}
 
-	function _testBind(origin:IBindable, name:String, from:Dynamic, to:Dynamic) {
-		trace(name);
-	}
-
-	function randomPosChange() {
-		testBind.x += 1;
+	var bincDec:Float = .25;
+	public function randomWidthChange() {
+		//bordered.borderContainerSettings.borderCornerRadius = Std.random(50);
+		bordered.borderContainerSettings.borderWidth += bincDec;
+		if(bordered.borderContainerSettings.borderWidth > 30 || bordered.borderContainerSettings.borderWidth <= 1) bincDec *=-1;
 	}
 }

@@ -13,8 +13,8 @@ class GridContainer extends AbsoluteContainer {
 	public var rows(default, null):Int;
 	var _gridNodes:Array<NodeBase> = [];
 
-	public function new(columns:Int, rows:Int) {
-		super();
+	public function new(columns:Int, rows:Int, ?useSettings:NodeBaseSettings) {
+		super(useSettings);
 
 		this.columns = columns;
 		this.rows = rows;
@@ -68,14 +68,16 @@ class GridContainer extends AbsoluteContainer {
 				cell.settings.alignX = PercentLT(w * x);
 				cell.settings.alignY = PercentLT(h * y);
 
-				// Debug test, flip background colors of the grid
-				var xMod = x % 2;
-				var yMod = y % 2;
-				var fMod = (xMod+yMod) % 2;
-				if(fMod == 1) {
-					cell.settings.bgColor = kha.Color.fromFloats(0,0,0,.3);
-				} else {
-					cell.settings.bgColor = kha.Color.fromFloats(0,0,0,.1);
+				if(hxfx.core.NodeBase.debug) {
+					// Debug test, flip background colors of the grid
+					var xMod = x % 2;
+					var yMod = y % 2;
+					var fMod = (xMod+yMod) % 2;
+					if(fMod == 1) {
+						cell.settings.bgColor = kha.Color.fromFloats(0,0,0,.3);
+					} else {
+						cell.settings.bgColor = kha.Color.fromFloats(0,0,0,.1);
+					}
 				}
 			}
 			_gridNodes[index] = cell;
