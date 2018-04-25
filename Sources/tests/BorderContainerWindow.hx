@@ -23,12 +23,16 @@ class BorderContainerWindow extends Window {
         // Fill some space
 		bordered.settings.width = LayoutSize.Percent(50);
 		bordered.settings.height = Percent(50);
+		bordered.settings.alignX = PercentLT(20);
+		bordered.settings.alignY = PercentLT(20);
 
         bordered.settings.bgColor = kha.Color.fromFloats(.8,.8,.8,1);
 
         bordered.borderContainerSettings.borderColor = kha.Color.Black;
-        bordered.borderContainerSettings.borderWidth = 2;
-		bordered.borderContainerSettings.borderCornerRadius = 6;
+        bordered.borderContainerSettings.borderWidth = 4;
+		bordered.borderContainerSettings.borderCornerRadius = 15;
+
+		bordered.borderContainerSettings.resizeable = true;
 
         /*var arc = new ArcQuadrant();
         arc.setArcRule(Radius(50));

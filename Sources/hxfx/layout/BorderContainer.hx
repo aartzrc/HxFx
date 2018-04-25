@@ -23,6 +23,8 @@ class BorderContainer extends GridContainer {
 	var cornerRB:BorderCorner;
 	var cornerLB:BorderCorner;
 
+	public var dragFocus:NodeBase;
+
 	public function new() {
 		super(3,3, new BorderContainerSettings()); // Create a 3x3 grid with default settings
 
@@ -92,6 +94,7 @@ class BorderContainerSettings extends NodeBaseSettings implements IBindable {
 	public var borderWidth:Float = 1;
 	public var borderColor:kha.Color = kha.Color.Transparent;
 	public var borderCornerRadius:Float = 0;
+	public var resizeable:Bool = false;
 }
 
 @:bindable
@@ -112,6 +115,7 @@ class BorderEdge extends NodeBase {
 		Bind.bind(container.borderContainerSettings.borderWidth, setBorderWidth);
 		Bind.bind(container.borderContainerSettings.borderColor, setBorderColor);
 		Bind.bind(container.borderContainerSettings.bgColor, setBGColor);
+		Bind.bind(container.borderContainerSettings.resizeable, setResizable);
 	}
 
 	function _init() {
@@ -212,6 +216,57 @@ class BorderEdge extends NodeBase {
 	function setBGColor(from:Color, to:Color) {
 		fill.settings.bgColor = to;
     }
+
+	function setResizable(from:Bool, to:Bool) {
+		if(!to) {
+			settings.cursor = null;
+			Bind.unbind(mouseData.b1down, mouseDown);
+			return;
+		}
+		switch(edge) {
+			case Left, Top:
+				// No resize cursor
+			case Right:
+				settings.cursor = "e-resize";
+				Bind.bind(mouseData.b1down, mouseDown);
+			case Bottom:
+				settings.cursor = "s-resize";
+				Bind.bind(mouseData.b1down, mouseDown);
+		}
+	}
+
+	function mouseDown(from:Bool, to:Bool) {
+		if(to && mouseData.mouseInBounds) {
+			if(container.dragFocus == null) {
+				container.dragFocus = this;
+				switch(edge) {
+					case Left, Top:
+						// No resize?
+					case Right:
+						container.settings.width = Fixed(container.size.w);
+						Bind.bind(container.mouseData.x, mouseDrag);
+					case Bottom:
+						container.settings.height = Fixed(container.size.h);
+						Bind.bind(container.mouseData.y, mouseDrag);
+				}
+			}
+		} else {
+			container.dragFocus = null;
+			Bind.unbind(container.mouseData.x, mouseDrag);
+			Bind.unbind(container.mouseData.y, mouseDrag);
+		}
+	}
+
+	function mouseDrag(from:Float, to:Float) {
+		switch(edge) {
+			case Left, Top:
+				// No resize?
+			case Right:
+				container.settings.width = Fixed(container.mouseData.x);
+			case Bottom:
+				container.settings.height = Fixed(container.mouseData.y);
+		}
+	}
 }
 
 enum Edge {
@@ -236,7 +291,7 @@ class BorderCorner extends NodeBase {
 		Bind.bind(container.borderContainerSettings.borderWidth, setWidthOrRadius);
 		Bind.bind(container.borderContainerSettings.borderColor, setBorderColor);
 		Bind.bind(container.borderContainerSettings.borderCornerRadius, setWidthOrRadius);
-		//Bind.bind(container.borderContainerSettings.bgColor, setBGColor);
+		Bind.bind(container.borderContainerSettings.resizeable, setResizable);
 	}
 
 	function _init() {
@@ -260,14 +315,27 @@ class BorderCorner extends NodeBase {
 				// Stick to right/bottom
 				parent.settings.alignX = PercentRB(100);
 				parent.settings.alignY = PercentRB(100);
-				settings.cursor = "nwse-resize";
+				settings.cursor = "se-resize";
 			case LB:
 				parent = container.getCell(0,2);
 				// Stick to left/bottom
 				parent.settings.alignX = PercentLT(0);
 				parent.settings.alignY = PercentRB(100);
 		}
-		
+	}
+
+	function setResizable(from:Bool, to:Bool) {
+		if(!to) {
+			settings.cursor = null;
+			return;
+		}
+		switch(corner) {
+			case LT, RT, LB:
+				// No resize cursor
+			case RB:
+				settings.cursor = "nwse-resize";
+				Bind.bind(mouseData.b1down, mouseDown);
+		}
 	}
 
 	function setWidthOrRadius(from:Float, to:Float) {
@@ -303,14 +371,80 @@ class BorderCorner extends NodeBase {
 		return cornerSize - (insideRadius*.6); // Technically sqrt(1/2r) to get sin @ 45deg - approx .7, leave margin with .6
 	}
 
+	function mouseDown(from:Bool, to:Bool) {
+		if(to && mouseData.mouseInBounds) {
+			if(container.dragFocus == null) {
+				container.dragFocus = this;
+				switch(corner) {
+					case LT, RT, LB:
+						// No resize?
+					case RB:
+						container.settings.height = Fixed(container.size.h);
+						container.settings.width = Fixed(container.size.w);
+						Bind.bind(container.mouseData.y, mouseDrag);
+						Bind.bind(container.mouseData.x, mouseDrag);
+				}
+			}
+		} else {
+			container.dragFocus = null;
+			Bind.unbind(container.mouseData.x, mouseDrag);
+			Bind.unbind(container.mouseData.y, mouseDrag);
+		}
+	}
+
+	function mouseDrag(from:Float, to:Float) {
+		switch(corner) {
+			case LT, RT, LB:
+				// No resize?
+			case RB:
+				container.settings.height = Fixed(container.mouseData.y);
+				container.settings.width = Fixed(container.mouseData.x);
+		}
+	}
+
 	override public function render(g2: Graphics): Void {
 		if(container.borderContainerSettings.borderCornerRadius <= 0) {
+			// Just draw a rectangle
 			super.render(g2);
 		} else {
 			// Override super to block full background draw
 			var bw = container.borderContainerSettings.borderWidth;
 			var cr = container.borderContainerSettings.borderCornerRadius;
-			if(bw<cr) {
+			if(bw<cr) { // Border is less than radius, draw 'stroked' arc
+				// Draw the arc
+				if(container.borderContainerSettings.borderColor.A > 0) {
+					g2.color = container.borderContainerSettings.borderColor;
+					
+					// drawArc with width does not fully fill - not sure if this is Kha or underlying WebGL problem
+					// workaround is to do a fillArc and take a bite out of it - this will not work with a transparent background!
+					switch(corner) {
+						case LT:
+							//g2.drawArc(size.w,size.h,cr-(bw/2),Math.PI,Math.PI*1.5,bw); 
+							g2.fillArc(cr,cr,cr,Math.PI,Math.PI*1.5);
+							g2.fillTriangle(0,cr,cr,cr,cr,0);
+							g2.fillRect(0,cr,size.w,size.h-cr);
+							g2.fillRect(cr,0,size.w-cr,cr);
+						case RT:
+							//g2.drawArc(0,size.h,cr-(bw/2),Math.PI*1.5,Math.PI*2,bw);
+							g2.fillArc(size.w-cr,cr,cr,Math.PI*1.5,Math.PI*2);
+							g2.fillTriangle(size.w-cr,0,size.w-cr,cr,size.w,cr);
+							g2.fillRect(0,0,size.w-cr,size.h);
+							g2.fillRect(size.w-cr,cr,cr,size.h-cr);
+						case RB:
+							//g2.drawArc(0,0,cr-(bw/2),Math.PI*2,Math.PI*.5,bw);
+							g2.fillArc(size.w-cr,size.h-cr,cr,Math.PI*2,Math.PI*.5);
+							g2.fillTriangle(size.w,size.h-cr,size.w-cr,size.h-cr,size.w-cr,size.h);
+							g2.fillRect(0,0,size.w,size.h-cr);
+							g2.fillRect(0,size.h-cr,size.w-cr,cr);
+						case LB:
+							//g2.drawArc(size.w,0,cr-(bw/2),Math.PI*.5,Math.PI,bw);
+							g2.fillArc(cr,size.h-cr,cr,Math.PI*.5,Math.PI);
+							g2.fillTriangle(0,size.h-cr,cr,size.h-cr,cr,size.h);
+							g2.fillRect(0,0,size.w,size.h-cr);
+							g2.fillRect(cr,size.h-cr,size.w-cr,cr);
+					}
+				}
+
 				// Fill background
 				if(container.settings.bgColor.A > 0) {
 					g2.color = container.settings.bgColor;
@@ -330,26 +464,11 @@ class BorderCorner extends NodeBase {
 							g2.fillTriangle(size.w,0,size.w,size.h-bw,bw,0);
 					}
 				}
-				
-				if(container.borderContainerSettings.borderColor.A > 0) {
-					g2.color = container.borderContainerSettings.borderColor;
-					
-					switch(corner) {
-						case LT:
-							g2.drawArc(size.w,size.h,cr-(bw/2),Math.PI,Math.PI*1.5,bw);
-						case RT:
-							g2.drawArc(0,size.h,cr-(bw/2),Math.PI*1.5,Math.PI*2,bw);
-						case RB:
-							g2.drawArc(0,0,cr-(bw/2),Math.PI*2,Math.PI*.5,bw);
-						case LB:
-							g2.drawArc(size.w,0,cr-(bw/2),Math.PI*.5,Math.PI,bw);
-					}
-				}
 			} else {
 				var bw = container.borderContainerSettings.borderWidth;
 				var cr = container.borderContainerSettings.borderCornerRadius;
 
-				// Corner is less than border radius, special draw
+				// Corner is less than border radius, draw a filled corner
 				if(container.borderContainerSettings.borderColor.A > 0) {
 					g2.color = container.borderContainerSettings.borderColor;
 					
@@ -360,19 +479,16 @@ class BorderCorner extends NodeBase {
 							g2.fillRect(0,cr,size.w,size.h-cr);
 							g2.fillRect(cr,0,size.w-cr,cr);
 						case RT:
-							//g2.drawArc(0,size.h,cr-(bw/2),Math.PI*1.5,Math.PI*2,bw);
 							g2.fillArc(size.w-cr,cr,cr,Math.PI*1.5,Math.PI*2);
 							g2.fillTriangle(size.w-cr,0,size.w-cr,cr,size.w,cr);
 							g2.fillRect(0,0,size.w-cr,size.h);
 							g2.fillRect(size.w-cr,cr,cr,size.h-cr);
 						case RB:
-							//g2.drawArc(0,0,cr-(bw/2),Math.PI*2,Math.PI*.5,bw);
 							g2.fillArc(size.w-cr,size.h-cr,cr,Math.PI*2,Math.PI*.5);
 							g2.fillTriangle(size.w,size.h-cr,size.w-cr,size.h-cr,size.w-cr,size.h);
 							g2.fillRect(0,0,size.w,size.h-cr);
 							g2.fillRect(0,size.h-cr,size.w-cr,cr);
 						case LB:
-							//g2.drawArc(size.w,0,cr-(bw/2),Math.PI*.5,Math.PI,bw);
 							g2.fillArc(cr,size.h-cr,cr,Math.PI*.5,Math.PI);
 							g2.fillTriangle(0,size.h-cr,cr,size.h-cr,cr,size.h);
 							g2.fillRect(0,0,size.w,size.h-cr);
