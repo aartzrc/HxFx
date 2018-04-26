@@ -15,7 +15,7 @@ class BorderContainerWindow extends Window {
 	override function onInit() {
 		super.onInit();
 
-		//hxfx.core.NodeBase.debug = true; // Debug
+		hxfx.core.NodeBase.debug = true; // Debug
 
 		stage.settings.bgColor = kha.Color.White;
 
@@ -36,11 +36,12 @@ class BorderContainerWindow extends Window {
 		bordered.borderContainerSettings.resizeable = true;
 
 		textField = new TextField();
-		textField.text = "some random crap some random crap some random crap some random crap";
+		textField.text = "Curabitur mattis mattis purus, at finibus enim feugiat id. Quisque odio turpis, pharetra id sapien ac, ullamcorper sodales sapien. Nulla id sapien mi. Sed nec metus consequat, imperdiet neque ac, dictum nisi. Etiam volutpat commodo tortor vitae sollicitudin. Morbi a arcu massa. Praesent malesuada elit sapien, et volutpat ipsum viverra sit amet. Suspendisse metus eros, vehicula a condimentum id, fermentum ut est. Ut ullamcorper sagittis facilisis. Vestibulum vestibulum, tellus in efficitur elementum, odio arcu volutpat turpis, non fringilla tellus enim vitae lacus. Donec eu fermentum eros. Donec ac lorem et nunc eleifend facilisis. Phasellus eget dignissim est. Nulla id sodales diam. Aenean ornare dignissim metus. Morbi consectetur eu lacus sit amet aliquam.";
+		//textField.text = "Curabitur a ab abc";
 		textField.settings.color = kha.Color.Black;
 		textField.fontSettings.fontSize = 24;
-		textField.settings.width=Percent(100);
-		textField.settings.height=Percent(100);
+		textField.settings.width=PercentLessFixed(100, 10);
+		textField.settings.height=PercentLessFixed(100, 10);
 		textField.settings.alignX=FixedLT(5);
 		textField.settings.alignY=FixedLT(5);
 		textField.fontSettings.wordWrap = true;

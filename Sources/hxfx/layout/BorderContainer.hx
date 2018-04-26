@@ -39,6 +39,7 @@ class BorderContainer extends GridContainer {
 		cornerLB = new BorderCorner(this, LB);
 		
 		setChildIndex(viewport, _childNodes.length-1); // Make the viewport render last
+		// Float viewport to middle of container
 		viewport.settings.alignX = PercentM(50);
 		viewport.settings.alignY = PercentM(50);
 

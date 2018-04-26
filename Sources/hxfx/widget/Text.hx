@@ -54,13 +54,17 @@ class Text extends NodeBase {
 		if(!textNode.fontSettings.wordWrap) {
 			return stringSize(textNode, textNode.text);
 		} else {
-			var wrapStrings = wrapStrings(textNode, size);
-			var newSize = new Size({w:0, h:textNode.fontSettings.fontSize*wrapStrings.length});
-			// Get wrap chunks, find max width
-			for(c in wrapStrings) {
+			// Start with how big NodeBase would be
+			var newSize = NodeBase.calcSize(textNode, size);
+			// Get how strings would wrap
+			var wrapStrings = wrapStrings(textNode, newSize);
+			// Adjust height to match how many lines of text (line spacing here?)
+			newSize.h = textNode.fontSettings.fontSize*wrapStrings.length;
+			// Get wrap chunks, find max width and update final size
+			/*for(c in wrapStrings) {
 				var chunkSize = stringSize(textNode, c);
 				if(chunkSize.w > newSize.w) newSize.w = chunkSize.w;
-			}
+			}*/
 
 			return newSize;
 		}
@@ -90,19 +94,35 @@ class Text extends NodeBase {
 			var trySize = stringSize(textNode, tryString);
 			if(trySize.w > size.w) {
 				// Text has exceeded width, time to wrap!
-				// Store the string
-				wrapStrings.push(lastString.rtrim());
+				if(lastString.length>0) {
+					// Store the string
+					wrapStrings.push(lastString.rtrim());
+				} else {
+					// TODO: Target width is smaller than current word, start breaking into characters
+					// Text will be dropped that is wider than size
+				}
 				// Update the position
 				lastWrapPos = i.begin;
 				// Reset the string
-				lastString = "";
+				lastString = textNode.text.substring(lastWrapPos, i.end);
+				// Drop strings that would be wider than container?
+				/*if(lastString == tryString) {
+					lastString = ""; 
+				}*/
 			} else {
 				lastString = tryString;
 			}
 		}
 
-		// Store the last chunk
-		wrapStrings.push(textNode.text.substr(lastWrapPos));
+		// Store the last chunk (if smaller than width)
+		var tryString = textNode.text.substr(lastWrapPos);
+		var trySize = stringSize(textNode, tryString);
+		if(trySize.w < size.w) {
+			wrapStrings.push(tryString);
+		} else {
+			// TODO: Target width is smaller than current word, start breaking into characters
+			// Text will be dropped that is wider than size
+		}
 
 		return wrapStrings;
 	}
