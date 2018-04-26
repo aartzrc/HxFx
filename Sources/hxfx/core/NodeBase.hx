@@ -14,49 +14,8 @@ The basic concept is:
 
 class NodeBase implements IBindable  {
 	public static var debug:Bool = false;
-	//flash abstractions
 	public var visible:Bool;
-	@:isVar
-	public var x(get, set):Float;
-	@:isVar
-	public var y(get, set):Float;
-	private var offsetY:Float;
-	public var width(get, set):Float;
-	private var _width_:Float;
-	@:isVar
-    public var height(get, set):Float;
-	private var _height_:Float;
-	 function get_width():Float{
-        return _width_; 
-    }
-    function set_width(w):Float{
-        return _width_; 
-    }
-     function get_height():Float{
-        return _height_; 
-    }
-    function set_height(w):Float{
-        return _height_; 
-    }
-    function get_x() {
-		return x;
-	}
-	function set_x(_x) {
-		x=Math.floor(_x);
-		//this.setLayoutRule(HAlign(Align.FixedLT(_x)));
-		this.settings.alignX=FixedLT(_x);
-		return x;
-	}
-	function get_y() {
-		return y;
-	}
-	function set_y(_y) {
-		y=Math.floor(_y);
-		this.settings.alignY=FixedLT(_y);
-		//this.setLayoutRule(VAlign(Align.FixedLT(_y)));		
-		return y ;
-	}
-//flash abstractions
+	
 	@:bindable
 	public var settings:NodeBaseSettings;
 	@:bindable(force)
@@ -244,8 +203,8 @@ class NodeBase implements IBindable  {
 	private function addNode(childNode:NodeBase):Void {
 		// Check if child is already attached
 		if(_childNodes.indexOf(childNode) != -1) return;
-
 		_childNodes.push(childNode);
+		trace(_childNodes.length);
 		_childPositions.set(childNode, new Position({x:0, y:0}));
 		Bind.bind(childNode.layoutIsValid, _childLayoutIsValidChanged);
 		Bind.bind(childNode.focused, _childFocusedChanged);
@@ -485,7 +444,6 @@ class NodeBase implements IBindable  {
 			g2.drawRect(0,0,size.w,size.h);
 			g2.color = _c;
 		}
-
 		_renderChildren(g2);
 	}
 
