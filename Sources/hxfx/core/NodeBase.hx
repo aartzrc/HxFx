@@ -204,7 +204,6 @@ class NodeBase implements IBindable  {
 		// Check if child is already attached
 		if(_childNodes.indexOf(childNode) != -1) return;
 		_childNodes.push(childNode);
-		trace(_childNodes.length);
 		_childPositions.set(childNode, new Position({x:0, y:0}));
 		Bind.bind(childNode.layoutIsValid, _childLayoutIsValidChanged);
 		Bind.bind(childNode.focused, _childFocusedChanged);
