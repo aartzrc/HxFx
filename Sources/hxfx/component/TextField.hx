@@ -1,4 +1,4 @@
-package hxfx.widget;
+package hxfx.component;
 
 import kha.Scheduler;
 import kha.input.KeyCode;
@@ -65,8 +65,10 @@ class TextField extends Text {
 			// Get focus
 			focused = true;
 		} else if(to) { // Clicked out of bounds, clear highlight
-			_startHighlightChar = -1;
-			_endHighlightChar = -1;
+			// TODO: This should mark as out of bounds but not clear highlight
+			// Window background should have the same effect - hightlight should appear differently
+			//_startHighlightChar = -1;
+			//_endHighlightChar = -1;
 			_cursorPos = -1;
 			// Clear focus
 			focused = false;
@@ -117,13 +119,13 @@ class TextField extends Text {
 				if(inBoundsRelativeStart.x>0 && inBoundsRelativeStart.x<=.5 && inBoundsRelativeStart.y>=0 && inBoundsRelativeStart.y<=1) {
 					_startHighlightChar = i;
 				}
-				if(inBoundsRelativeStart.x>.5 && inBoundsRelativeStart.x<=1) {
+				if(inBoundsRelativeStart.x>.5 && inBoundsRelativeStart.x<=1 && inBoundsRelativeStart.y>=0 && inBoundsRelativeStart.y<=1) {
 					_startHighlightChar = i+1;
 				}
-				if(inBoundsRelativeCurrent.x>0 && inBoundsRelativeCurrent.x<=.5) {
+				if(inBoundsRelativeCurrent.x>0 && inBoundsRelativeCurrent.x<=.5 && inBoundsRelativeCurrent.y>=0 && inBoundsRelativeCurrent.y<=1) {
 					_endHighlightChar = i;
 				}
-				if(inBoundsRelativeCurrent.x>.5 && inBoundsRelativeCurrent.x<=1) {
+				if(inBoundsRelativeCurrent.x>.5 && inBoundsRelativeCurrent.x<=1 && inBoundsRelativeCurrent.y>=0 && inBoundsRelativeCurrent.y<=1) {
 					_endHighlightChar = i+1;
 				}
 			}
@@ -367,11 +369,13 @@ class TextField extends Text {
 		_startHighlightChar = -1;
 		_endHighlightChar = -1;
 	}
+
 	public function setTextFieldRule(newRule:TextFieldRule) {
 		//TODO: enable or disable editable capabilities based on rule
 		// Notify parent of the change
 		layoutIsValid = false;
 	}
+
 	override public function render(g2: Graphics): Void {
 		super.render(g2);
 		// Check if highlight is happening
@@ -382,28 +386,34 @@ class TextField extends Text {
 				s = _endHighlightChar;
 				e = _startHighlightChar;
 			}
-			if(highlighted) {
-				g2.color = kha.Color.fromFloats(0,0,0,.4);
-				
-				if(!fontSettings.wordWrap) { // Single line, draw it quickly
-					var sR = characterRects[s];
-					var eR:Rect;
-					eR = characterRects[e-1];
-					g2.fillRect(sR.position.x, sR.position.y, eR.position.x + eR.size.w - sR.position.x, eR.position.y + eR.size.h - sR.position.y);
-				} else { // Possibly multi-line, iterate
-					for(i in s ... e) {
-						var r = characterRects[i];
-						g2.fillRect(r.position.x, r.position.y, r.size.w, r.size.h);
-					}
+			trace(s + " : " + e);
+
+			g2.color = kha.Color.fromFloats(0,0,0,.4);
+			
+			if(!fontSettings.wordWrap) { // Single line, draw it quickly
+				var sR = characterRects[s];
+				var eR:Rect;
+				eR = characterRects[e-1];
+				g2.fillRect(sR.position.x, sR.position.y, eR.position.x + eR.size.w - sR.position.x, eR.position.y + eR.size.h - sR.position.y);
+			} else { // Possibly multi-line, iterate
+				for(i in s ... e) {
+					var r = characterRects[i];
+					g2.fillRect(r.position.x, r.position.y, r.size.w, r.size.h);
 				}
 			}
 		}
 
 		// Check if cursor is blinking
-		if(_cursorBlinkState && _cursorPos>=0 && _cursorPos<characterRects.length) {
-			var cR = characterRects[_cursorPos];
-			g2.color = kha.Color.Black;
-			g2.fillRect(cR.position.x-1, cR.position.y, 2, cR.size.h);
+		if(_cursorBlinkState && _cursorPos>=-1 && _cursorPos<characterRects.length) {
+			if(_cursorPos == -1) { // Edge condition: cursor is before first character
+				var cR = characterRects[_cursorPos];
+				g2.color = kha.Color.Black;
+				g2.fillRect(cR.position.x-1, cR.position.y, 2, cR.size.h);
+			} else {
+				var cR = characterRects[_cursorPos];
+				g2.color = kha.Color.Black;
+				g2.fillRect(cR.position.x+cR.size.w-1, cR.position.y, 2, cR.size.h);
+			}
 		}
 	}
 

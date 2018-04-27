@@ -2,7 +2,7 @@ package tests;
 
 import hxfx.Window;
 import hxfx.layout.*;
-import hxfx.widget.*;
+import hxfx.component.*;
 
 import kha.*;
 

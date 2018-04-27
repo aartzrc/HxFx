@@ -5,7 +5,7 @@ import kha.Assets;
 import kha.Font;
 import kha.System;
 import hxfx.layout.*;
-import hxfx.widget.*;
+import hxfx.component.*;
 import bindx.*;
 
 class ComponentWindow extends Window {

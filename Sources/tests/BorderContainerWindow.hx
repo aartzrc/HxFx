@@ -2,7 +2,7 @@ package tests;
 
 import hxfx.Window;
 import hxfx.layout.*;
-import hxfx.widget.TextField;
+import hxfx.component.TextField;
 
 class BorderContainerWindow extends Window {
 	public static function main() {

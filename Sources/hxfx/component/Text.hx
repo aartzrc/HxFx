@@ -1,4 +1,4 @@
-package hxfx.widget;
+package hxfx.component;
 
 import hxfx.core.NodeBase;
 
@@ -239,14 +239,13 @@ class Text extends NodeBase {
 			var h = useFont.height(useFontSize);
 			var row = 0;
 			for(chunk in wordChunks) {
-				chunk += " "; // Add an extra character so we can get the right edge of the last char
-				for(i in 1 ... chunk.length) {
+				x = 0;
+				for(i in 1 ... chunk.length+1) {
 					//var w = useFont.widthOfCharacters(useFontSize, charCodes, 0, i);
 					var w = useFont.width(useFontSize, chunk.substr(0, i));
 					charRects.push(new Rect({position: {x: x, y: row*h}, size: {w:w-x, h:h}}));
 					x = w;
 				}
-				x = 0;
 				row ++;
 			}
 			//trace(charRects);
@@ -254,18 +253,17 @@ class Text extends NodeBase {
 			var row = 0;
 			var w = (11/16)*fontSettings.fontSize; // Fake character width
 			for(chunk in wordChunks) {
-				chunk += " "; // Add an extra character so we can get the right edge of the last char
-				for(i in 1 ... chunk.length) {
+				x = 0;
+				for(i in 1 ... chunk.length+1) {
 					charRects.push(new Rect({position: {x: x, y: row*useFontSize}, size: {w:w-x, h:useFontSize}}));
 					x = w;
 				}
-				x = 0;
 				row ++;
 			}
 		}
 
 		// Push an extra rect for the end of the text
-		charRects.push(new Rect({position: {x: x, y: 0}, size: { w: 0, h: 16*(useFontSize/16) }}));
+		charRects.push(new Rect({position: {x: x, y: (wordChunks.length-1)*useFontSize}, size: { w: 0, h: 16*(useFontSize/16) }}));
 
 		return charRects;
 	}
@@ -290,7 +288,7 @@ class Text extends NodeBase {
 			
 			g2.color = settings.color;
 
-			g2.drawString(size.w + " : "+ size.h, 100, 100);
+			if(NodeBase.debug) g2.drawString(size.w + " : "+ size.h, 100, 100);
 			
 			var row = 0;
 			for(c in wrapStrings(this, size)) {
