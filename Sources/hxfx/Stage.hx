@@ -1,6 +1,7 @@
 package hxfx;
 
 import hxfx.core.NodeBase;
+import hxfx.layout.AbsoluteContainer;
 import hxfx.core.data.Mouse;
 import hxfx.core.data.Keyboard;
 import kha.input.KeyCode;
@@ -30,6 +31,15 @@ class Stage extends NodeBase {
 	private function attachMouse(from:Mouse, to:Mouse) {
 		this.mouseData = this.window.mouse.mouseData;
 		Bind.bindAll(mouseData, _doMouseChanged);
+	}
+
+	override private function _doMouseChanged(origin:IBindable, name:String, from:Dynamic, to:Dynamic) {
+		super._doMouseChanged(origin, name, from, to);
+
+		// Stage handles in bounds - only a single node stack should be in bounds at a time
+		if(!_checkMouseInBounds()) { // Nothing found, clear all inbounds flags
+			_clearMouseInBounds();
+		}
 	}
 
 	private function attachKeyboard(from:Keyboard, to:Keyboard) {

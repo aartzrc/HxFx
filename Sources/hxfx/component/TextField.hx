@@ -13,6 +13,8 @@ class TextField extends Text {
 	@:bindable
 	var _cursorPos:Int = -1;
 	
+	// TODO: Add end of line positioning for cursor - it should go to the right of the last character and the wrap to next line
+	
 	var _cursorBlinkTask:Int = -1;
 	var _cursorBlinkState:Bool = false;
 
@@ -156,6 +158,10 @@ class TextField extends Text {
 		var alt = false;
 		
 		// TODO: WordWrap positions could be stored during charCodes update instead of the seek routines...
+		// TODO: up and down arrow for multi-line fields
+		// TODO: Add carriage return - ignore for single-line fields
+		// TODO: Home/end keys should operate on a single line (currently jump to beginning and end of string)
+		// TODO: Shift-Home/end should highlight
 
 		for(k in keysDown) {
 			switch(k) {
@@ -190,6 +196,7 @@ class TextField extends Text {
 						_cursorPos = _newPos;
 						_endHighlightChar = _cursorPos;
 						_cursorBlinkState = true;
+					
 					case KeyCode.Left if (shift): // Shift + left
 						if(_startHighlightChar == -1 ) _startHighlightChar = _cursorPos;
 						if(_cursorPos>0) _cursorPos--;
@@ -200,6 +207,14 @@ class TextField extends Text {
 						if(_cursorPos<text.length) _cursorPos++;
 						_endHighlightChar = _cursorPos;
 						_cursorBlinkState = true;
+
+					case KeyCode.Home:
+						_cursorPos = 0;
+						clearHighlight();
+					case KeyCode.End:
+						_cursorPos = text.length;
+						clearHighlight();
+					
 					case KeyCode.Left:
 						if(_startHighlightChar<_endHighlightChar) _cursorPos = _startHighlightChar;
 							else _cursorPos = _endHighlightChar;
@@ -210,13 +225,16 @@ class TextField extends Text {
 							else _cursorPos = _endHighlightChar;
 						clearHighlight();
 						_cursorBlinkState = true;
+					
 					case KeyCode.Backspace:
 						_spliceText(_startHighlightChar, _endHighlightChar);
 					case KeyCode.Delete:
 						_spliceText(_startHighlightChar, _endHighlightChar);
+					
 					case KeyCode.A if (control): // Select all
 						_startHighlightChar = 0;
 						_endHighlightChar = text.length;
+					
 					case _:
 						// Any other things to track?
 						//trace(k);
@@ -244,6 +262,7 @@ class TextField extends Text {
 							_cursorPos = _newPos;
 							_endHighlightChar = _cursorPos;
 							_cursorBlinkState = true;
+						
 						case KeyCode.Left if (shift): // Shift + left
 							if(_startHighlightChar == -1 ) _startHighlightChar = _cursorPos;
 							if(_cursorPos>0) _cursorPos--;
@@ -256,6 +275,7 @@ class TextField extends Text {
 								else _newPos++;
 							_cursorPos = _newPos;
 							_cursorBlinkState = true;
+						
 						case KeyCode.Right if (shift): // Shift + right
 							if(_startHighlightChar == -1 ) _startHighlightChar = _cursorPos;
 							if(_cursorPos<text.length) _cursorPos++;
@@ -267,19 +287,32 @@ class TextField extends Text {
 							if(_newPos>charCodes.length) _newPos = charCodes.length;
 							_cursorPos = _newPos;
 							_cursorBlinkState = true;
+
+						case KeyCode.Home:
+							_cursorPos = 0;
+							clearHighlight();
+						case KeyCode.End:
+							_cursorPos = text.length;
+							clearHighlight();
+						
 						case KeyCode.Left:
 							if(_cursorPos>0) _cursorPos--;
+							clearHighlight();
 							_cursorBlinkState = true;
 						case KeyCode.Right:
 							if(_cursorPos<text.length) _cursorPos++;
+							clearHighlight();
 							_cursorBlinkState = true;
+						
 						case KeyCode.Backspace:
 							_spliceText(_cursorPos-1, _cursorPos);
 						case KeyCode.Delete:
 							_spliceText(_cursorPos, _cursorPos+1);
+						
 						case KeyCode.A if (control): // Select all
 							_startHighlightChar = 0;
 							_endHighlightChar = text.length;
+						
 						case _:
 							// Any other things to track?
 							//trace(k);
@@ -315,6 +348,13 @@ class TextField extends Text {
 		}
 
 		return null;
+	}
+
+	override public function layoutToSize(newLayoutSize:Size, force:Bool = false):Bool {
+		// TextField forces redraw
+		super.layoutToSize(newLayoutSize, true);
+
+		return true;
 	}
 
 	override private function cutListener():String {
@@ -386,7 +426,6 @@ class TextField extends Text {
 				s = _endHighlightChar;
 				e = _startHighlightChar;
 			}
-			trace(s + " : " + e);
 
 			g2.color = kha.Color.fromFloats(0,0,0,.4);
 			
@@ -404,16 +443,10 @@ class TextField extends Text {
 		}
 
 		// Check if cursor is blinking
-		if(_cursorBlinkState && _cursorPos>=-1 && _cursorPos<characterRects.length) {
-			if(_cursorPos == -1) { // Edge condition: cursor is before first character
-				var cR = characterRects[_cursorPos];
-				g2.color = kha.Color.Black;
-				g2.fillRect(cR.position.x-1, cR.position.y, 2, cR.size.h);
-			} else {
-				var cR = characterRects[_cursorPos];
-				g2.color = kha.Color.Black;
-				g2.fillRect(cR.position.x+cR.size.w-1, cR.position.y, 2, cR.size.h);
-			}
+		if(_cursorBlinkState && _cursorPos>-1 && _cursorPos<characterRects.length) {
+			var cR = characterRects[_cursorPos];
+			g2.color = kha.Color.Black;
+			g2.fillRect(cR.position.x-1, cR.position.y, 2, cR.size.h);
 		}
 	}
 

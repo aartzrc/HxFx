@@ -15,7 +15,8 @@ class BorderContainerWindow extends Window {
 	override function onInit() {
 		super.onInit();
 
-		hxfx.core.NodeBase.debug = true; // Debug
+		//hxfx.core.NodeBase.debugLayout = true;
+		//hxfx.core.NodeBase.debugHitbounds = true;
 
 		stage.settings.bgColor = kha.Color.White;
 
@@ -30,8 +31,8 @@ class BorderContainerWindow extends Window {
         bordered.settings.bgColor = kha.Color.fromFloats(.8,.8,.8,1);
 
         bordered.borderContainerSettings.borderColor = kha.Color.Black;
-        bordered.borderContainerSettings.borderWidth = 4;
-		bordered.borderContainerSettings.borderCornerRadius = 15;
+        bordered.borderContainerSettings.borderWidth = 8;
+		bordered.borderContainerSettings.borderCornerRadius = 5;
 
 		bordered.borderContainerSettings.resizeable = true;
 

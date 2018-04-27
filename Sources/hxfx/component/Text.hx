@@ -8,6 +8,8 @@ using StringTools;
 class Text extends NodeBase {
 	public static var wordWrapCharacters:Array<Int> = [32, 189]; // Space, dash
 
+	public static inline var charWidthEstimate = 9/16;
+
 	public var text:String = "";
 	var charCodes:Array<Int>;
 
@@ -73,6 +75,11 @@ class Text extends NodeBase {
 		return newSize;
 	}
 
+	override function _thisHitBounds() {
+		// Add a rectangle by default
+		_hitBoundsCache.bounds.push(new Rect({position: {x:0, y:0}, size: {w:size.w, h:size.h}}));
+	}
+
 	private static function stringSize(textNode:Text, text:String) {
 		var stringSize:Size = new Size();
 		if(textNode.fontSettings.font != null) {
@@ -81,7 +88,7 @@ class Text extends NodeBase {
 		} else {
 			// No font? fake some size
 			stringSize.h = textNode.fontSettings.fontSize;
-			stringSize.w = (11/16)*textNode.fontSettings.fontSize * text.length;
+			stringSize.w = charWidthEstimate*textNode.fontSettings.fontSize * text.length;
 		}
 		return stringSize;
 	}
@@ -251,10 +258,11 @@ class Text extends NodeBase {
 			//trace(charRects);
 		} else {
 			var row = 0;
-			var w = (11/16)*fontSettings.fontSize; // Fake character width
+			var cw = charWidthEstimate*fontSettings.fontSize; // Fake character width
 			for(chunk in wordChunks) {
 				x = 0;
 				for(i in 1 ... chunk.length+1) {
+					var w = i*cw;
 					charRects.push(new Rect({position: {x: x, y: row*useFontSize}, size: {w:w-x, h:useFontSize}}));
 					x = w;
 				}
@@ -288,7 +296,7 @@ class Text extends NodeBase {
 			
 			g2.color = settings.color;
 
-			if(NodeBase.debug) g2.drawString(size.w + " : "+ size.h, 100, 100);
+			//if(NodeBase.debug) g2.drawString(size.w + " : "+ size.h, 100, 100);
 			
 			var row = 0;
 			for(c in wrapStrings(this, size)) {
@@ -298,7 +306,7 @@ class Text extends NodeBase {
 		}
 
 		// Draw character rectangles - debug
-		if(NodeBase.debug) {
+		if(NodeBase.debugLayout) {
 			g2.color = kha.Color.fromFloats(1,1,0,.5);
 			for(r in characterRects) {
 				g2.drawRect(r.position.x, r.position.y, r.size.w, r.size.h, 1);

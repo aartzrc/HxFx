@@ -1,8 +1,8 @@
 package hxfx.layout;
 
 import hxfx.core.NodeBase;
-
-using kha.graphics2.GraphicsExtension;
+import hxfx.core.display.ArcQuadrant;
+import hxfx.core.display.Rectangle;
 
 /*
 Borderlayout is a bit tricky when corner radii are added. It is nice to start with a 3x3 grid and draw the edges using the cells, 
@@ -23,6 +23,9 @@ class BorderContainer extends GridContainer {
 	var cornerRB:BorderCorner;
 	var cornerLB:BorderCorner;
 
+	public var viewport:AbsoluteContainer;
+	var centerCell:NodeBase;
+
 	public var dragFocus:NodeBase;
 
 	public function new() {
@@ -37,19 +40,23 @@ class BorderContainer extends GridContainer {
 		cornerRT = new BorderCorner(this, RT);
 		cornerRB = new BorderCorner(this, RB);
 		cornerLB = new BorderCorner(this, LB);
-		
-		setChildIndex(viewport, _childNodes.length-1); // Make the viewport render last
-		// Float viewport to middle of container
+
+		centerCell = getCell(1,1);
+		centerCell.settings.width = Percent(100);
+		centerCell.settings.height = Percent(100);
+		centerCell.settings.alignX = PercentM(50);
+		centerCell.settings.alignY = PercentM(50);
+		viewport = new AbsoluteContainer();
+		viewport.settings.width = Percent(100);
+		viewport.settings.height = Percent(100);
 		viewport.settings.alignX = PercentM(50);
 		viewport.settings.alignY = PercentM(50);
 
+		viewport.parent = centerCell; // Attach to the center
+		
+		setChildIndex(centerCell, _childNodes.length-1); // Make the viewport render last
+		
 		Bind.bind(borderContainerSettings.bgColor, setBGColor);
-	}
-
-	public var viewport(get, never):NodeBase;
-
-	function get_viewport() {
-		return getCell(1,1);
 	}
 
 	public var borderContainerSettings(get,never):BorderContainerSettings;
@@ -62,11 +69,15 @@ class BorderContainer extends GridContainer {
 		viewport.settings.bgColor = to;
 	}
 
+	override function _thisHitBounds() {
+		// No hit bounds for the container, just compile child hit bounds
+	}
+
 	public function updateBorders() {
 		// Recalc all borders
 
 		// How much extra edges should have to work with a rounded corner
-		var cornerSize = cornerLT.cornerSize;
+		var cornerSize = cornerLT.cornerDisplay.size;
 		var viewportOffset = cornerLT.viewportOffset;
 
 		top.parent.settings.width = PercentLessFixed(100, cornerSize*2);
@@ -78,8 +89,8 @@ class BorderContainer extends GridContainer {
 		right.parent.settings.height = PercentLessFixed(100, cornerSize*2);
 		right.parent.settings.width = Fixed(viewportOffset);
 
-		viewport.settings.width = PercentLessFixed(100, viewportOffset*2);
-		viewport.settings.height = PercentLessFixed(100, viewportOffset*2);
+		centerCell.settings.width = PercentLessFixed(100, viewportOffset*2);
+		centerCell.settings.height = PercentLessFixed(100, viewportOffset*2);
     }
 
 	override public function render(g2: Graphics): Void {
@@ -103,8 +114,9 @@ class BorderEdge extends NodeBase {
     public var edge:Edge = Edge.Top;
 	public var container:BorderContainer;
 
-	var border:AbsoluteContainer = new AbsoluteContainer();
-	var fill:AbsoluteContainer = new AbsoluteContainer();
+	var borderRectangle:Rectangle = new Rectangle(); // borderRectangle does the drawing and provides SVG output
+	var border:AbsoluteContainer = new AbsoluteContainer(); // border container is a 'helper' that responds to layout, updates are pushed to borderRectangle
+	var fill:AbsoluteContainer = new AbsoluteContainer(); // the background fill when drawing to screen
 
 	public function new(container:BorderContainer, edge:Edge) {
 		super();
@@ -117,6 +129,8 @@ class BorderEdge extends NodeBase {
 		Bind.bind(container.borderContainerSettings.borderColor, setBorderColor);
 		Bind.bind(container.borderContainerSettings.bgColor, setBGColor);
 		Bind.bind(container.borderContainerSettings.resizeable, setResizable);
+		Bind.bind(border.size.w, setBorderRectangleSize);
+		Bind.bind(border.size.h, setBorderRectangleSize);
 	}
 
 	function _init() {
@@ -210,8 +224,13 @@ class BorderEdge extends NodeBase {
 		}
     }
 
+	function setBorderRectangleSize(from:Float, to:Float) {
+		borderRectangle.size.w = size.w;
+		borderRectangle.size.h = size.h;
+	}
+
 	function setBorderColor(from:Color, to:Color) {
-		border.settings.bgColor = to;
+		borderRectangle.fillColor = to;
     }
 
 	function setBGColor(from:Color, to:Color) {
@@ -268,6 +287,12 @@ class BorderEdge extends NodeBase {
 				container.settings.height = Fixed(container.mouseData.y);
 		}
 	}
+
+	override public function render(g2: Graphics): Void {
+		borderRectangle.render(g2);
+
+		_renderChildren(g2);
+	}
 }
 
 enum Edge {
@@ -279,18 +304,19 @@ enum Edge {
 
 @:bindable
 class BorderCorner extends NodeBase {
-    public var corner:Corner = Corner.LT;
+    public var cornerDisplay:ArcQuadrant = new ArcQuadrant();
 	public var container:BorderContainer;
 
-	public function new(container:BorderContainer, corner:Corner) {
+	public function new(container:BorderContainer, corner:Quadrant) {
 		super();
-        this.corner = corner;
+        cornerDisplay.corner = corner;
 		this.container = container;
 
 		_init();
 		
 		Bind.bind(container.borderContainerSettings.borderWidth, setWidthOrRadius);
 		Bind.bind(container.borderContainerSettings.borderColor, setBorderColor);
+		Bind.bind(container.settings.bgColor, setBackgroundColor);
 		Bind.bind(container.borderContainerSettings.borderCornerRadius, setWidthOrRadius);
 		Bind.bind(container.borderContainerSettings.resizeable, setResizable);
 	}
@@ -300,7 +326,7 @@ class BorderCorner extends NodeBase {
 		settings.width = Percent(100);
 		settings.height = Percent(100);
 
-		switch(corner) {
+		switch(cornerDisplay.corner) {
 			case LT:
 				parent = container.getCell(0,0);
 				// Stick to left/top
@@ -330,7 +356,7 @@ class BorderCorner extends NodeBase {
 			settings.cursor = null;
 			return;
 		}
-		switch(corner) {
+		switch(cornerDisplay.corner) {
 			case LT, RT, LB:
 				// No resize cursor
 			case RB:
@@ -339,28 +365,36 @@ class BorderCorner extends NodeBase {
 		}
 	}
 
+	override function _thisHitBounds() {
+		switch(cornerDisplay.corner) {
+			case LT:
+				_hitBoundsCache.bounds.push(new Circle({position: {x:size.w, y:size.h}, radius: cornerDisplay.radius}));
+			case RT:
+				_hitBoundsCache.bounds.push(new Circle({position: {x:0, y:size.h}, radius: cornerDisplay.radius}));
+			case RB:
+				_hitBoundsCache.bounds.push(new Circle({position: {x:0, y:0}, radius: cornerDisplay.radius}));
+			case LB:
+				_hitBoundsCache.bounds.push(new Circle({position: {x:size.w, y:0}, radius: cornerDisplay.radius}));
+		}
+	}
+
 	function setWidthOrRadius(from:Float, to:Float) {
-		parent.settings.width = Fixed(cornerSize);
-		parent.settings.height = Fixed(cornerSize);
+		cornerDisplay.width = container.borderContainerSettings.borderWidth;
+		cornerDisplay.radius = container.borderContainerSettings.borderCornerRadius;
+
+		parent.settings.width = Fixed(cornerDisplay.size);
+		parent.settings.height = Fixed(cornerDisplay.size);
 
 		container.updateBorders();
     }
 
 	function setBorderColor(from:Color, to:Color) {
-		settings.bgColor = to;
+		cornerDisplay.color = to;
     }
 
-	public var cornerSize(get, never):Float;
-
-	function get_cornerSize() {
-		var s = container.borderContainerSettings;
-		var d = s.borderWidth;
-		// Calculate for rounded corners
-		if(s.borderCornerRadius > s.borderWidth) {
-			d = s.borderCornerRadius;
-		}
-		return d;
-	}
+	function setBackgroundColor(from:Color, to:Color) {
+		cornerDisplay.bgColor = to;
+    }
 
 	public var viewportOffset(get, never):Float;
 
@@ -369,14 +403,14 @@ class BorderCorner extends NodeBase {
 		var insideRadius = s.borderCornerRadius-s.borderWidth;
 		//var insideRadius = s.borderCornerRadius;
 		if(insideRadius<0) return s.borderWidth;
-		return cornerSize - (insideRadius*.6); // Technically sqrt(1/2r) to get sin @ 45deg - approx .7, leave margin with .6
+		return cornerDisplay.size - (insideRadius*.6); // Technically sqrt(1/2r) to get sin @ 45deg - approx .7, leave margin with .6
 	}
 
 	function mouseDown(from:Bool, to:Bool) {
 		if(to && mouseData.mouseInBounds) {
 			if(container.dragFocus == null) {
 				container.dragFocus = this;
-				switch(corner) {
+				switch(cornerDisplay.corner) {
 					case LT, RT, LB:
 						// No resize?
 					case RB:
@@ -394,118 +428,19 @@ class BorderCorner extends NodeBase {
 	}
 
 	function mouseDrag(from:Float, to:Float) {
-		switch(corner) {
+		switch(cornerDisplay.corner) {
 			case LT, RT, LB:
 				// No resize?
 			case RB:
-				container.settings.height = Fixed(container.mouseData.y);
-				container.settings.width = Fixed(container.mouseData.x);
+				var cornerOffset = cornerDisplay.radius * .6 + cornerDisplay.width/2;
+				container.settings.height = Fixed(container.mouseData.y + cornerOffset);
+				container.settings.width = Fixed(container.mouseData.x + cornerOffset);
 		}
 	}
 
 	override public function render(g2: Graphics): Void {
-		if(container.borderContainerSettings.borderCornerRadius <= 0) {
-			// Just draw a rectangle
-			super.render(g2);
-		} else {
-			// Override super to block full background draw
-			var bw = container.borderContainerSettings.borderWidth;
-			var cr = container.borderContainerSettings.borderCornerRadius;
-			if(bw<cr) { // Border is less than radius, draw 'stroked' arc
-				// Draw the arc
-				if(container.borderContainerSettings.borderColor.A > 0) {
-					g2.color = container.borderContainerSettings.borderColor;
-					
-					// drawArc with width does not fully fill - not sure if this is Kha or underlying WebGL problem
-					// workaround is to do a fillArc and take a bite out of it - this will not work with a transparent background!
-					switch(corner) {
-						case LT:
-							//g2.drawArc(size.w,size.h,cr-(bw/2),Math.PI,Math.PI*1.5,bw); 
-							g2.fillArc(cr,cr,cr,Math.PI,Math.PI*1.5);
-							g2.fillTriangle(0,cr,cr,cr,cr,0);
-							g2.fillRect(0,cr,size.w,size.h-cr);
-							g2.fillRect(cr,0,size.w-cr,cr);
-						case RT:
-							//g2.drawArc(0,size.h,cr-(bw/2),Math.PI*1.5,Math.PI*2,bw);
-							g2.fillArc(size.w-cr,cr,cr,Math.PI*1.5,Math.PI*2);
-							g2.fillTriangle(size.w-cr,0,size.w-cr,cr,size.w,cr);
-							g2.fillRect(0,0,size.w-cr,size.h);
-							g2.fillRect(size.w-cr,cr,cr,size.h-cr);
-						case RB:
-							//g2.drawArc(0,0,cr-(bw/2),Math.PI*2,Math.PI*.5,bw);
-							g2.fillArc(size.w-cr,size.h-cr,cr,Math.PI*2,Math.PI*.5);
-							g2.fillTriangle(size.w,size.h-cr,size.w-cr,size.h-cr,size.w-cr,size.h);
-							g2.fillRect(0,0,size.w,size.h-cr);
-							g2.fillRect(0,size.h-cr,size.w-cr,cr);
-						case LB:
-							//g2.drawArc(size.w,0,cr-(bw/2),Math.PI*.5,Math.PI,bw);
-							g2.fillArc(cr,size.h-cr,cr,Math.PI*.5,Math.PI);
-							g2.fillTriangle(0,size.h-cr,cr,size.h-cr,cr,size.h);
-							g2.fillRect(0,0,size.w,size.h-cr);
-							g2.fillRect(cr,size.h-cr,size.w-cr,cr);
-					}
-				}
-
-				// Fill background
-				if(container.settings.bgColor.A > 0) {
-					g2.color = container.settings.bgColor;
-					
-					switch(corner) {
-						case LT:
-							g2.fillArc(size.w,size.h,cr - bw,Math.PI,Math.PI*1.5);
-							g2.fillTriangle(bw,size.h,size.w,size.h,size.w,bw);
-						case RT:
-							g2.fillArc(0,size.h,cr - bw,Math.PI*1.5,Math.PI*2);
-							g2.fillTriangle(0,size.h,size.w-bw,size.h,0,bw);
-						case RB:
-							g2.fillArc(0,0,cr - bw,Math.PI*2,Math.PI*.5);
-							g2.fillTriangle(0,0,size.w-bw,0,0,size.h-bw);
-						case LB:
-							g2.fillArc(size.w,0,cr - bw,Math.PI*.5,Math.PI);
-							g2.fillTriangle(size.w,0,size.w,size.h-bw,bw,0);
-					}
-				}
-			} else {
-				var bw = container.borderContainerSettings.borderWidth;
-				var cr = container.borderContainerSettings.borderCornerRadius;
-
-				// Corner is less than border radius, draw a filled corner
-				if(container.borderContainerSettings.borderColor.A > 0) {
-					g2.color = container.borderContainerSettings.borderColor;
-					
-					switch(corner) {
-						case LT:
-							g2.fillArc(cr,cr,cr,Math.PI,Math.PI*1.5);
-							g2.fillTriangle(0,cr,cr,cr,cr,0);
-							g2.fillRect(0,cr,size.w,size.h-cr);
-							g2.fillRect(cr,0,size.w-cr,cr);
-						case RT:
-							g2.fillArc(size.w-cr,cr,cr,Math.PI*1.5,Math.PI*2);
-							g2.fillTriangle(size.w-cr,0,size.w-cr,cr,size.w,cr);
-							g2.fillRect(0,0,size.w-cr,size.h);
-							g2.fillRect(size.w-cr,cr,cr,size.h-cr);
-						case RB:
-							g2.fillArc(size.w-cr,size.h-cr,cr,Math.PI*2,Math.PI*.5);
-							g2.fillTriangle(size.w,size.h-cr,size.w-cr,size.h-cr,size.w-cr,size.h);
-							g2.fillRect(0,0,size.w,size.h-cr);
-							g2.fillRect(0,size.h-cr,size.w-cr,cr);
-						case LB:
-							g2.fillArc(cr,size.h-cr,cr,Math.PI*.5,Math.PI);
-							g2.fillTriangle(0,size.h-cr,cr,size.h-cr,cr,size.h);
-							g2.fillRect(0,0,size.w,size.h-cr);
-							g2.fillRect(cr,size.h-cr,size.w-cr,cr);
-					}
-				}
-			}
-		}
+		cornerDisplay.render(g2);
 
 		_renderChildren(g2);
 	}
-}
-
-enum Corner {
-	LT;
-	RT;
-	RB;
-	LB;
 }

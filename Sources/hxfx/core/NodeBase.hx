@@ -2,6 +2,8 @@ package hxfx.core;
 
 import kha.input.KeyCode;
 
+using kha.graphics2.GraphicsExtension;
+
 /**
 Root level class for a Display Node
 The basic concept is:
@@ -13,7 +15,8 @@ The basic concept is:
 **/
 
 class NodeBase implements IBindable  {
-	public static var debug:Bool = false;
+	public static var debugLayout:Bool = false;
+	public static var debugHitbounds:Bool = false;
 	public var visible:Bool;
 	
 	@:bindable
@@ -60,6 +63,15 @@ class NodeBase implements IBindable  {
 		Bind.bind(this.settings.cursor, _doCursorChanged);
 		Bind.bind(this.parent, _parentChange);
 		Bind.bind(this.mouseSubscribe, _mouseSubscribe);
+
+		// Debug in bounds
+		mouseSubscribe = true;
+		Bind.bind(this.mouseData.mouseInBounds, _debugBounds);
+	}
+
+	private function _debugBounds(from:Bool, to:Bool) {
+		// Do a redraw - render will highlight in bounds nodes
+		layoutIsValid = false;
 	}
 
 	private function _parentChange(from:NodeBase, to:NodeBase) {
@@ -91,9 +103,13 @@ class NodeBase implements IBindable  {
 
 		// Update the size this node will use for display
 		var newSize = _calcSize(newLayoutSize);
+
 		// Copy values to bindings are maintained
 		size.w = newSize.w;
 		size.h = newSize.h;
+
+		// Reset the bounds cache
+		_hitBoundsCache = null;
 
 		// Update my children based on the final size calculated
 		_calcChildLayout();
@@ -352,6 +368,7 @@ class NodeBase implements IBindable  {
 	}
 
 	private function _doMouseChanged(origin:IBindable, name:String, from:Dynamic, to:Dynamic) {
+		if(name == "mouseInBounds") return; // Ignore the mouseInBounds field
 		for(l in _mouseListeners) {
 			var childPos = _childPositions.get(l);
 			l.mouseData.x = mouseData.x - childPos.x;
@@ -368,11 +385,78 @@ class NodeBase implements IBindable  {
 
 		// TODO: check children for in bounds too? or maybe a separate property for children vs current node mouse in bounds?
 		// Bounds should be a shape instead of rectangle
-		if(mouseData.x>=0 && mouseData.x<=size.w && mouseData.y>=0 && mouseData.y<=size.h) {
+		/*if(mouseData.x>=0 && mouseData.x<=size.w && mouseData.y>=0 && mouseData.y<=size.h) {
 			mouseData.mouseInBounds = true;
 		} else {
 			mouseData.mouseInBounds = false;
+		}*/
+	}
+
+	function _checkMouseInBounds():Bool {
+		// Check if this node is in bounds
+		var inBounds = hitBounds.inBounds(new Position({x: mouseData.x, y: mouseData.y}));
+
+		if(mouseData != null) {
+			mouseData.mouseInBounds = inBounds;
 		}
+
+		// This node is in bounds, find which child is in bounds
+		if(inBounds) {
+			var foundChildInBounds = false;
+			var i = _childNodes.length-1; // Run bounds check reverse from display order (last drawn should have first bounds check)
+			while(i>=0) {
+				var c = _childNodes[i];
+				// Check the child, it will set its in bounds flag
+				if(!foundChildInBounds && c._checkMouseInBounds()) {
+					// Stop looking when the child is found
+					foundChildInBounds = true;
+				} else {
+					// Clear all child in bounds flags
+					c._clearMouseInBounds();
+				}
+				i--;
+			}
+
+			return true;
+		}
+
+		return inBounds;
+	}
+
+	function _clearMouseInBounds() {
+		if(mouseData != null) {
+			mouseData.mouseInBounds = false;
+		}
+		for(c in _childNodes) {
+			c._clearMouseInBounds();
+		}
+	}
+
+	var _hitBoundsCache:HitBounds;
+
+	public var hitBounds(get,never):HitBounds;
+
+	function get_hitBounds() {
+		if(_hitBoundsCache != null) return _hitBoundsCache;
+
+		_hitBoundsCache = new HitBounds();
+		_thisHitBounds();
+		for(c in children) {
+			// Get and translate the child hitbounds into this bounds
+			var childBounds = c.hitBounds;
+			for(b in childBounds.bounds) {
+				_hitBoundsCache.bounds.push(b.translate(_childPositions[c]));
+			}
+		}
+
+		return _hitBoundsCache;
+	}
+
+	/**
+	 *  Child classes should override this for custom hit bounds
+	 */
+	function _thisHitBounds() {
+		// NodeBase does not have boundaries by default
 	}
 
 	private function _keysDownChange(keysDown:List<KeyCode>) {
@@ -437,10 +521,30 @@ class NodeBase implements IBindable  {
 		}
 		
 		// Debug rectangle
-		if(debug) {
+		if(debugLayout) {
 			var _c = g2.color;
 			g2.color = kha.Color.fromFloats(0,0,0,.2);
 			g2.drawRect(0,0,size.w,size.h);
+			g2.color = _c;
+		}
+		if(debugHitbounds) {
+			var _c = g2.color;
+			g2.color = kha.Color.fromFloats(1,0,0,.2);
+			for(b in hitBounds.bounds) {
+				// Not a great way to determine type...
+				try {
+					var r = cast(b, Rect);
+					if(mouseData.mouseInBounds) g2.fillRect(r.position.x,r.position.y,r.size.w,r.size.h);
+					g2.drawRect(r.position.x,r.position.y,r.size.w,r.size.h);
+				} catch(e:Dynamic) {
+					try {
+						var c = cast(b, Circle);
+						if(mouseData.mouseInBounds) g2.fillCircle(c.position.x, c.position.y, c.radius);
+						g2.drawCircle(c.position.x, c.position.y, c.radius);
+					} catch(e:Dynamic) {
+					}
+				}
+			}
 			g2.color = _c;
 		}
 		_renderChildren(g2);

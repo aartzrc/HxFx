@@ -48,8 +48,7 @@ typedef RectDef = {
 }
 
 @:bindable
-class Rect implements IBindable  {
-	public var position:Position;
+class Rect extends BoundsShape implements IBindable  {
 	public var size:Size;
 
 	public function new(?rect:RectDef) {
@@ -62,7 +61,7 @@ class Rect implements IBindable  {
 		}
 	}
 
-	public function inBounds(loc:Position) {
+	override public function inBounds(loc:Position) {
 		var xRelative = loc.x - position.x;
 		var yRelative = loc.y - position.y;
 		return (xRelative >= 0 && xRelative <= size.w && yRelative >= 0 && yRelative <= size.h);
@@ -80,5 +79,84 @@ class Rect implements IBindable  {
 		relativePos.y = yRelative/size.h;
 
 		return relativePos;
+	}
+
+	override function get_clone():BoundsShape {
+		return new Rect({position: {x: position.x, y: position.y}, size: {w:size.w, h:size.h}});
+	}
+}
+
+typedef CircleDef = {
+	?position:PositionDef,
+	?radius:Float
+}
+
+@:bindable
+class Circle extends BoundsShape implements IBindable  {
+	public var radius:Float = 0;
+
+	public function new(?circle:CircleDef) {
+		if(circle != null) {
+			if(circle.position != null) {
+				position = new Position(circle.position);
+			} else {
+				position = new Position();
+			}
+			if(circle.radius != null)
+				radius = circle.radius;
+		} else {
+			position = new Position();
+		}
+	}
+
+	override public function inBounds(loc:Position) {
+		var x = loc.x - position.x;
+		var y = loc.y - position.y;
+		var dist = Math.sqrt(x*x + y*y);
+		return (dist<radius);
+	}
+
+	override function get_clone():BoundsShape {
+		return new Circle({position: {x: position.x, y: position.y}, radius: radius});
+	}
+}
+
+class BoundsShape {
+	public var position:Position;
+
+	public function inBounds(loc:Position):Bool {
+		throw "inBounds not implemented";
+	}
+
+	public var clone(get, never):BoundsShape;
+
+	function get_clone():BoundsShape {
+		throw "clone not implemented";
+	}
+
+	/**
+	 *  Create a new instance of this BoundsShape with the position translated by the offset amount
+	 *  @param offset - 
+	 *  @return BoundsShape
+	 */
+	public function translate(offset:Position):BoundsShape {
+		var c = this.clone;
+		c.position.x+=offset.x;
+		c.position.y+=offset.y;
+		return c;
+	}
+}
+
+class HitBounds {
+	public var bounds:Array<BoundsShape> = new Array<BoundsShape>();
+
+	public function new() {}
+
+	public function inBounds(loc:Position):Bool {
+		for(b in bounds) {
+			if(b.inBounds(loc)) return true;
+		}
+
+		return false;
 	}
 }

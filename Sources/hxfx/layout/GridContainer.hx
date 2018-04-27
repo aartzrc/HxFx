@@ -61,14 +61,14 @@ class GridContainer extends AbsoluteContainer {
 				_gridNodes[index].parent = null; // Detach previous cell from parent
 			}
 			if(cell == null) {
-				// By default create an AbsoluteContainer that fills the grid block
-				cell = new AbsoluteContainer();
+				// By default create an empty NodeBase that fills the grid block - NodeBase is used to avoid hit boundaries for the grid
+				cell = new NodeBase();
 				cell.settings.width = Percent(w);
 				cell.settings.height = Percent(h);
 				cell.settings.alignX = PercentLT(w * x);
 				cell.settings.alignY = PercentLT(h * y);
 
-				if(hxfx.core.NodeBase.debug) {
+				if(hxfx.core.NodeBase.debugLayout) {
 					// Debug test, flip background colors of the grid
 					var xMod = x % 2;
 					var yMod = y % 2;
