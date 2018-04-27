@@ -10,12 +10,14 @@ class Position implements IBindable  {
 	public var x:Float = 0;
 	public var y:Float = 0;
 
-	public function new(position:PositionDef) {
-		if(position.x != null)
-			this.x = position.x;
+	public function new(?position:PositionDef) {
+		if(position != null) {
+			if(position.x != null)
+				this.x = position.x;
 
-		if(position.y != null)
-			this.y = position.y;
+			if(position.y != null)
+				this.y = position.y;
+		}
 	}
 }
 
@@ -29,12 +31,14 @@ class Size implements IBindable  {
 	public var w:Float = 0;
 	public var h:Float = 0;
 
-	public function new(size:SizeDef) {
-		if(size.w != null)
-			this.w = size.w;
+	public function new(?size:SizeDef) {
+		if(size != null) {
+			if(size.w != null)
+				this.w = size.w;
 
-		if(size.h != null)
-			this.h = size.h;
+			if(size.h != null)
+				this.h = size.h;
+		}
 	}
 }
 
@@ -48,9 +52,14 @@ class Rect implements IBindable  {
 	public var position:Position;
 	public var size:Size;
 
-	public function new(rect:RectDef) {
-		position = new Position(rect.position);
-		size = new Size(rect.size);
+	public function new(?rect:RectDef) {
+		if(rect != null) {
+			position = new Position(rect.position);
+			size = new Size(rect.size);
+		} else {
+			position = new Position();
+			size = new Size();
+		}
 	}
 
 	public function inBounds(loc:Position) {
@@ -64,7 +73,7 @@ class Rect implements IBindable  {
 	0 = far left/top, 1 = far right/bottom
 	**/
 	public function inBoundsRelative(loc:Position) {
-		var relativePos = new Position({x: 0, y: 0});
+		var relativePos = new Position();
 		var xRelative = loc.x - position.x;
 		var yRelative = loc.y - position.y;
 		relativePos.x = xRelative/size.w;

@@ -39,9 +39,17 @@ class Text extends NodeBase {
 		}
 		//trace(fontGlyphs.length);
 
-		charRects = new Array<Rect>(); // Clear cache
 		_wrapIndexes = null; // Clear cache
 		layoutIsValid = false; // I changed, notify my parent
+	}
+
+	override public function layoutToSize(newLayoutSize:Size, force:Bool = false):Bool {
+		if(!super.layoutToSize(newLayoutSize, force)) return false;
+
+		// Layout has changed, rebuild character rectangles
+		charRects = new Array<Rect>(); // Clear cache
+
+		return true;
 	}
 
 	private override function _calcSize(layoutSize:Size) {
@@ -51,77 +59,129 @@ class Text extends NodeBase {
 	public static override function calcSize(textNode:Text, size:Size) {
 		// Determine what size I want to be based on text size
 		// Ignore most layout rules, the parent container will handle positioning
-		if(!textNode.fontSettings.wordWrap) {
-			return stringSize(textNode, textNode.text);
-		} else {
-			// Start with how big NodeBase would be
-			var newSize = NodeBase.calcSize(textNode, size);
-			// Get how strings would wrap
-			var wrapStrings = wrapStrings(textNode, newSize);
-			// Adjust height to match how many lines of text (line spacing here?)
-			newSize.h = textNode.fontSettings.fontSize*wrapStrings.length;
-			// Get wrap chunks, find max width and update final size
-			/*for(c in wrapStrings) {
-				var chunkSize = stringSize(textNode, c);
-				if(chunkSize.w > newSize.w) newSize.w = chunkSize.w;
-			}*/
+		
+		// Start with how big NodeBase would be
+		var newSize = NodeBase.calcSize(textNode, size);
+		// Get how strings would wrap
+		var minSize = new Size();
+		wrapStrings(textNode, newSize, minSize);
 
-			return newSize;
-		}
+		// Calc minimum size
+		if(minSize.w > newSize.w) newSize.w = minSize.w;
+		if(minSize.h > newSize.h) newSize.h = minSize.h;
+
+		return newSize;
 	}
 
 	private static function stringSize(textNode:Text, text:String) {
-		var stringSize:Size = new Size({w:0, h:0});
+		var stringSize:Size = new Size();
 		if(textNode.fontSettings.font != null) {
 			stringSize.h = textNode.fontSettings.font.height(Math.round(textNode.fontSettings.fontSize));
 			stringSize.w = textNode.fontSettings.font.width(Math.round(textNode.fontSettings.fontSize), text);
 		} else {
 			// No font? fake some size
 			stringSize.h = textNode.fontSettings.fontSize;
-			stringSize.w = (11.5*(textNode.fontSettings.fontSize/16)) * text.length;
+			stringSize.w = (11/16)*textNode.fontSettings.fontSize * text.length;
 		}
 		return stringSize;
 	}
 
-	public static function wrapStrings(textNode:Text, size:Size) {
+	/**
+	 *  Get an array of strings that would be wrapped based on the given size.
+	 *  Pass an empty Size instance for minSize, it will be populated with the minimum size to display all text
+	 *  @param textNode - 
+	 *  @param size - 
+	 *  @param minSize - 
+	 */
+	public static function wrapStrings(textNode:Text, size:Size, ?minSize:Size) {
 		var wrapStrings = new Array<String>();
 
-		// Loop over text chunks - wrap when we hit an edge
-		var lastWrapPos = 0;
-		var lastString = "";
-		for(i in textNode.wrapIndexes) {
-			var tryString = textNode.text.substring(lastWrapPos, i.end);
-			var trySize = stringSize(textNode, tryString);
-			if(trySize.w > size.w) {
-				// Text has exceeded width, time to wrap!
-				if(lastString.length>0) {
-					// Store the string
-					wrapStrings.push(lastString.rtrim());
-				} else {
-					// TODO: Target width is smaller than current word, start breaking into characters
-					// Text will be dropped that is wider than size
-				}
-				// Update the position
-				lastWrapPos = i.begin;
-				// Reset the string
-				lastString = textNode.text.substring(lastWrapPos, i.end);
-				// Drop strings that would be wider than container?
-				/*if(lastString == tryString) {
-					lastString = ""; 
-				}*/
-			} else {
-				lastString = tryString;
+		if(!textNode.fontSettings.wordWrap) { // No word wrap, just push back the full text and minimum size
+			if(minSize != null) {
+				var strSize = stringSize(textNode, textNode.text); // Calc minSize
+				minSize.w = strSize.w;
+				minSize.h = strSize.h;
 			}
-		}
-
-		// Store the last chunk (if smaller than width)
-		var tryString = textNode.text.substr(lastWrapPos);
-		var trySize = stringSize(textNode, tryString);
-		if(trySize.w < size.w) {
-			wrapStrings.push(tryString);
+			return [textNode.text];
 		} else {
-			// TODO: Target width is smaller than current word, start breaking into characters
-			// Text will be dropped that is wider than size
+			// Loop over text chunks - wrap when we hit an edge
+			// TODO: this is a mess... rethink looping
+			// Another approach would be to calc all string chunk sizes and find longest length first, then use that for target width - heavier for few wrapping lines, but quicker for smaller target sizes?
+			var lastWrapPos = 0;
+			var lastEndPos = 0;
+			var targetSize = new Size({w:size.w, h:size.h});
+			var strSize = new Size(); // Keep track of the total string size
+			var lastTrySize = new Size();
+			var wrapIndexes = textNode.wrapIndexes;
+			var rebuild = false;
+			var i = 0;
+			while(i<wrapIndexes.length) {
+				if(rebuild) {
+					targetSize.w = strSize.w;
+					wrapStrings = new Array<String>();
+					lastWrapPos = 0;
+					lastEndPos = 0;
+					lastTrySize = new Size();
+					i=0;
+					rebuild = false;
+				}
+				var wrapChunk = wrapIndexes[i];
+				var tryString = textNode.text.substring(lastWrapPos, wrapChunk.end);
+				var trySize = stringSize(textNode, tryString);
+				if(trySize.w > targetSize.w) {
+					// Text has exceeded width, time to wrap!
+					if(lastWrapPos != lastEndPos) { // A valid chunk has been found
+						// Store the string
+						wrapStrings.push(textNode.text.substring(lastWrapPos, lastEndPos));
+						// Keep track of the size
+						if(lastTrySize.w > strSize.w) {
+							strSize.w = lastTrySize.w;
+							// Size changed, repeat process
+							rebuild = true;
+						}
+						// Update the position
+						lastWrapPos = wrapChunk.begin;
+						lastEndPos = wrapChunk.begin;
+						i--; // Repeat the last chunk
+					} else { // No valid chunk
+						// TODO: Target width is smaller than current word, a flag is needed to start breaking into characters
+						// For now store the string and adjust minimum size
+						wrapStrings.push(textNode.text.substring(lastWrapPos, wrapChunk.end));
+						// Keep track of the minimum size
+						if(trySize.w > strSize.w) {
+							strSize.w = trySize.w;
+							// Size changed, repeat process
+							rebuild = true;
+						}
+						// Move the pointer forward to the next chunk
+						if(wrapIndexes.length > i+1) {
+							var nextWrap = wrapIndexes[i+1];
+							lastWrapPos = nextWrap.begin;
+							lastEndPos = nextWrap.begin;
+						}
+					}
+				} else {
+					lastEndPos = wrapChunk.end;
+					lastTrySize = trySize;
+				}
+				i++;
+			}
+
+			// Store the last chunk
+			if(lastWrapPos != lastEndPos) {
+				var tryString = textNode.text.substr(lastWrapPos);
+				var trySize = stringSize(textNode, tryString);
+				wrapStrings.push(tryString);
+				if(trySize.w > strSize.w) strSize.w = trySize.w;
+			}
+			
+			// Build the final height
+			strSize.h = textNode.fontSettings.fontSize * wrapStrings.length;
+
+			if(minSize != null) {
+				minSize.w = strSize.w;
+				minSize.h = strSize.h;
+			}
 		}
 
 		return wrapStrings;
@@ -144,7 +204,7 @@ class Text extends NodeBase {
 			if(wordWrapCharacters.indexOf(text.charCodeAt(i)) != -1) {
 				// Found a wrap location, save it
 				var t = curString.length;
-				curString = curString.trim(); // Ignore spaces
+				//curString = curString.trim(); // Ignore spaces
 				if(curString.length>0) {
 					_wrapIndexes.push({begin:lastPos, end:lastPos+curString.length});
 				}
@@ -173,26 +233,39 @@ class Text extends NodeBase {
 		var useFontSize = Math.round(fontSettings.fontSize);
 		var x:Float = 0;
 
+		var wordChunks = wrapStrings(this, size);
+
 		if(useFont != null) {
 			var h = useFont.height(useFontSize);
-			//var ki = useFont._get(useFontSize, charCodes); // Make Kha draw the whole string, this is a workaround to make sure unicode character sizes are fully calculated
-			for(i in 1 ... charCodes.length+1) {
-				var w = useFont.widthOfCharacters(useFontSize, charCodes, 0, i);				
-				charRects.push(new Rect({position: {x: x, y: 0}, size: {w:w-x, h:h}}));
-				x = w;
+			var row = 0;
+			for(chunk in wordChunks) {
+				chunk += " "; // Add an extra character so we can get the right edge of the last char
+				for(i in 1 ... chunk.length) {
+					//var w = useFont.widthOfCharacters(useFontSize, charCodes, 0, i);
+					var w = useFont.width(useFontSize, chunk.substr(0, i));
+					charRects.push(new Rect({position: {x: x, y: row*h}, size: {w:w-x, h:h}}));
+					x = w;
+				}
+				x = 0;
+				row ++;
 			}
 			//trace(charRects);
 		} else {
-			for(i in 0 ... text.length) {
-				// Fake the sizes to provide some initial feedback to layout engine
-				var w = 11.5*(useFontSize/16);
-				charRects.push(new Rect({position: {x: x, y: 0}, size: { w: w, h: 16*(useFontSize/16) }}));
-				x+=w;
+			var row = 0;
+			var w = (11/16)*fontSettings.fontSize; // Fake character width
+			for(chunk in wordChunks) {
+				chunk += " "; // Add an extra character so we can get the right edge of the last char
+				for(i in 1 ... chunk.length) {
+					charRects.push(new Rect({position: {x: x, y: row*useFontSize}, size: {w:w-x, h:useFontSize}}));
+					x = w;
+				}
+				x = 0;
+				row ++;
 			}
 		}
 
 		// Push an extra rect for the end of the text
-			charRects.push(new Rect({position: {x: x, y: 0}, size: { w: 0, h: 16*(useFontSize/16) }}));
+		charRects.push(new Rect({position: {x: x, y: 0}, size: { w: 0, h: 16*(useFontSize/16) }}));
 
 		return charRects;
 	}
@@ -205,32 +278,33 @@ class Text extends NodeBase {
 		if(useFont != null) {
 			g2.font = useFont;
 			g2.fontSize = Math.round(fontSettings.fontSize);
-			if(addFontGlyphs.length > 0) {
+			// Adding font glyphs should be done at a higher level instead of during each Text.render call
+			/*if(addFontGlyphs.length > 0) {
 				for(i in addFontGlyphs) { // Check for extra font glyphs that are not in the current set
 					if(g2.fontGlyphs.indexOf(i) == -1)
 						g2.fontGlyphs.push(i);
 				}
 				fontGlyphs = g2.fontGlyphs; // Save the update
 				addFontGlyphs = new Array<Int>(); // Clear the additions
-			}
+			}*/
 			
 			g2.color = settings.color;
 
-			if(!fontSettings.wordWrap) {
-				g2.drawString(text, 0, 0);
-			} else {
-				var row = 0;
-				for(c in wrapStrings(this, size)) {
-					g2.drawString(c, 0, row*fontSettings.fontSize);
-					row++;
-				}
+			g2.drawString(size.w + " : "+ size.h, 100, 100);
+			
+			var row = 0;
+			for(c in wrapStrings(this, size)) {
+				g2.drawString(c, 0, row*fontSettings.fontSize);
+				row++;
 			}
+		}
 
-			// Draw character rectangles - debug
-			/*g2.color = kha.Color.fromFloats(0,0,0,.15);
+		// Draw character rectangles - debug
+		if(NodeBase.debug) {
+			g2.color = kha.Color.fromFloats(1,1,0,.5);
 			for(r in characterRects) {
 				g2.drawRect(r.position.x, r.position.y, r.size.w, r.size.h, 1);
-			}*/
+			}
 		}
 	}
 }

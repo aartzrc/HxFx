@@ -109,7 +109,7 @@ class NodeBase implements IBindable  {
 	Override this call for subclasses that have specific size rules
 	**/
 	public static function calcSize(node:NodeBase, layoutSize:Size) {
-		var newSize = new Size({w:0, h:0});
+		var newSize = new Size();
 
 		// Determine what size I want to be based on my layout rules
 		// Position is handled by the parent!
@@ -204,7 +204,7 @@ class NodeBase implements IBindable  {
 		// Check if child is already attached
 		if(_childNodes.indexOf(childNode) != -1) return;
 		_childNodes.push(childNode);
-		_childPositions.set(childNode, new Position({x:0, y:0}));
+		_childPositions.set(childNode, new Position());
 		Bind.bind(childNode.layoutIsValid, _childLayoutIsValidChanged);
 		Bind.bind(childNode.focused, _childFocusedChanged);
 		if(childNode.focused) this.focused = true;

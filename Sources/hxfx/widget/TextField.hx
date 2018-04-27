@@ -19,7 +19,8 @@ class TextField extends Text {
 	public function new() {
 		super();
 
-		mouseSubscribe = true;
+		//mouseSubscribe = true;
+		settings.cursor = "text"; // Default to the text selection cursor
 		
 		// Bind to mouse
 		Bind.bind(this.mouseData.b1down, _mouseb1Down);
@@ -110,9 +111,10 @@ class TextField extends Text {
 			
 			// Calculate characters selected
 			for(i in 0 ... characterRects.length) {
-				var inBoundsRelativeStart = characterRects[i].inBoundsRelative(dragStart);
-				var inBoundsRelativeCurrent = characterRects[i].inBoundsRelative(dragCurrent);
-				if(inBoundsRelativeStart.x>0 && inBoundsRelativeStart.x<=.5) {
+				var r = characterRects[i];
+				var inBoundsRelativeStart = r.inBoundsRelative(dragStart);
+				var inBoundsRelativeCurrent = r.inBoundsRelative(dragCurrent);
+				if(inBoundsRelativeStart.x>0 && inBoundsRelativeStart.x<=.5 && inBoundsRelativeStart.y>=0 && inBoundsRelativeStart.y<=1) {
 					_startHighlightChar = i;
 				}
 				if(inBoundsRelativeStart.x>.5 && inBoundsRelativeStart.x<=1) {
@@ -383,15 +385,17 @@ class TextField extends Text {
 			if(highlighted) {
 				g2.color = kha.Color.fromFloats(0,0,0,.4);
 				
-				var sR = characterRects[s];
-				var eR:Rect;
-				/*if(_endHighlightChar < characterRects.length) { // Check for edge case of highlighting past last character
-					eR = characterRects[e];
-					g2.fillRect(sR.position.x, sR.position.y, eR.position.x - sR.position.x, eR.position.y + eR.size.h - sR.position.y);
-				} else {*/
+				if(!fontSettings.wordWrap) { // Single line, draw it quickly
+					var sR = characterRects[s];
+					var eR:Rect;
 					eR = characterRects[e-1];
 					g2.fillRect(sR.position.x, sR.position.y, eR.position.x + eR.size.w - sR.position.x, eR.position.y + eR.size.h - sR.position.y);
-				//}
+				} else { // Possibly multi-line, iterate
+					for(i in s ... e) {
+						var r = characterRects[i];
+						g2.fillRect(r.position.x, r.position.y, r.size.w, r.size.h);
+					}
+				}
 			}
 		}
 

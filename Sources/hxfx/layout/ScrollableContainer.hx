@@ -8,7 +8,7 @@ Displays and manages horizontal and vertical scroll bars based on child boundari
 @:bindable
 class ScrollableContainer extends NodeBase {
 	
-	public var childBounds:Rect = new Rect({position: {left:null, top:null}, size:{width:null, height:null}});
+	public var childBounds:Rect = new Rect();
 	public var verticalScrollbar:Bool = false;
 	public var horizontalScrollbar:Bool = false;
 
@@ -58,7 +58,7 @@ class ScrollableContainer extends NodeBase {
 
 	private function _calcChildBounds() {
 		// Determine child bounds
-		var newChildBounds = new Rect({position: {left:null, top:null}, size:{width:null, height:null}});
+		var newChildBounds = new Rect();
 		for(c in _childNodes) {
 			if(newChildBounds.position.left == null) {
 				newChildBounds.position.left = c.relativePosition.left;

@@ -36,8 +36,8 @@ class BorderContainerWindow extends Window {
 		bordered.borderContainerSettings.resizeable = true;
 
 		textField = new TextField();
-		textField.text = "Curabitur mattis mattis purus, at finibus enim feugiat id. Quisque odio turpis, pharetra id sapien ac, ullamcorper sodales sapien. Nulla id sapien mi. Sed nec metus consequat, imperdiet neque ac, dictum nisi. Etiam volutpat commodo tortor vitae sollicitudin. Morbi a arcu massa. Praesent malesuada elit sapien, et volutpat ipsum viverra sit amet. Suspendisse metus eros, vehicula a condimentum id, fermentum ut est. Ut ullamcorper sagittis facilisis. Vestibulum vestibulum, tellus in efficitur elementum, odio arcu volutpat turpis, non fringilla tellus enim vitae lacus. Donec eu fermentum eros. Donec ac lorem et nunc eleifend facilisis. Phasellus eget dignissim est. Nulla id sodales diam. Aenean ornare dignissim metus. Morbi consectetur eu lacus sit amet aliquam.";
-		//textField.text = "Curabitur a ab abc";
+		//textField.text = "Curabitur mattis mattis purus, at finibus enim feugiat id. Quisque odio turpis, pharetra id sapien ac, ullamcorper sodales sapien. Nulla id sapien mi. Sed nec metus consequat, imperdiet neque ac, dictum nisi. Etiam volutpat commodo tortor vitae sollicitudin. Morbi a arcu massa. Praesent malesuada elit sapien, et volutpat ipsum viverra sit amet. Suspendisse metus eros, vehicula a condimentum id, fermentum ut est. Ut ullamcorper sagittis facilisis. Vestibulum vestibulum, tellus in efficitur elementum, odio arcu volutpat turpis, non fringilla tellus enim vitae lacus. Donec eu fermentum eros. Donec ac lorem et nunc eleifend facilisis. Phasellus eget dignissim est. Nulla id sodales diam. Aenean ornare dignissim metus. Morbi consectetur eu lacus sit amet aliquam.";
+		textField.text = "asdf a ab Curabiasdftur, abc Curabitur";
 		textField.settings.color = kha.Color.Black;
 		textField.fontSettings.fontSize = 24;
 		textField.settings.width=PercentLessFixed(100, 10);
@@ -49,8 +49,8 @@ class BorderContainerWindow extends Window {
 
 		bordered.parent = stage;
 
-		//kha.Scheduler.addTimeTask(randomRadiusChange, 0, .02);
-		//kha.Scheduler.addTimeTask(randomWidthChange, 0, .05);
+		//kha.Scheduler.addTimeTask(randomRadiusChange, 0, .1);
+		//kha.Scheduler.addTimeTask(randomWidthChange, 0, .2);
 
 		kha.Assets.loadFont("arial", function(arial:kha.Font)
 		{
@@ -58,7 +58,7 @@ class BorderContainerWindow extends Window {
 		});
 	}
 
-	var incDec:Float = .25;
+	var incDec:Float = 1;
 	public function randomRadiusChange() {
 		//bordered.borderContainerSettings.borderCornerRadius = Std.random(50);
 		bordered.borderContainerSettings.borderCornerRadius += incDec;
@@ -66,7 +66,7 @@ class BorderContainerWindow extends Window {
 		//if(bordered.borderContainerSettings.borderCornerRadius >= bordered.borderContainerSettings.borderWidth || bordered.borderContainerSettings.borderCornerRadius < 0) incDec *=-1;
 	}
 
-	var bincDec:Float = .25;
+	var bincDec:Float = 1;
 	public function randomWidthChange() {
 		//bordered.borderContainerSettings.borderCornerRadius = Std.random(50);
 		bordered.borderContainerSettings.borderWidth += bincDec;
