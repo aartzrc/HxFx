@@ -10,6 +10,7 @@ project.addLibrary('bindx2');
 //project.addParameter('-main tests.DualGridWindow');
 //project.addParameter('-main tests.ScrollableWindow');
 //project.addParameter('-main tests.ComponentWindow');
-project.addParameter('-main tests.BorderContainerWindow');
+//project.addParameter('-main tests.BorderContainerWindow');
+project.addParameter('-main tests.ScrollContainerWindow');
 
 resolve(project);
