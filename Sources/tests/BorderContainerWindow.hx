@@ -23,7 +23,7 @@ class BorderContainerWindow extends Window {
 		bordered = new BorderContainer();
 
         // Fill some space
-		bordered.settings.width = LayoutSize.Percent(50);
+		bordered.settings.width = Percent(50);
 		bordered.settings.height = Percent(50);
 		bordered.settings.alignX = PercentLT(20);
 		bordered.settings.alignY = PercentLT(20);
@@ -31,14 +31,14 @@ class BorderContainerWindow extends Window {
         bordered.settings.bgColor = kha.Color.fromFloats(.8,.8,.8,1);
 
         bordered.borderContainerSettings.borderColor = kha.Color.Black;
-        bordered.borderContainerSettings.borderWidth = 8;
-		bordered.borderContainerSettings.borderCornerRadius = 5;
+        bordered.borderContainerSettings.borderWidth = 5;
+		bordered.borderContainerSettings.borderCornerRadius = 12;
 
 		bordered.borderContainerSettings.resizeable = true;
 
 		textField = new TextField();
-		//textField.text = "Curabitur mattis mattis purus, at finibus enim feugiat id. Quisque odio turpis, pharetra id sapien ac, ullamcorper sodales sapien. Nulla id sapien mi. Sed nec metus consequat, imperdiet neque ac, dictum nisi. Etiam volutpat commodo tortor vitae sollicitudin. Morbi a arcu massa. Praesent malesuada elit sapien, et volutpat ipsum viverra sit amet. Suspendisse metus eros, vehicula a condimentum id, fermentum ut est. Ut ullamcorper sagittis facilisis. Vestibulum vestibulum, tellus in efficitur elementum, odio arcu volutpat turpis, non fringilla tellus enim vitae lacus. Donec eu fermentum eros. Donec ac lorem et nunc eleifend facilisis. Phasellus eget dignissim est. Nulla id sodales diam. Aenean ornare dignissim metus. Morbi consectetur eu lacus sit amet aliquam.";
-		textField.text = "asdf a ab Curabiasdftur, abc Curabitur";
+		textField.text = "Curabitur mattis mattis purus, at finibus enim feugiat id. Quisque odio turpis, pharetra id sapien ac, ullamcorper sodales sapien. Nulla id sapien mi. Sed nec metus consequat, imperdiet neque ac, dictum nisi. Etiam volutpat commodo tortor vitae sollicitudin. Morbi a arcu massa. Praesent malesuada elit sapien, et volutpat ipsum viverra sit amet. Suspendisse metus eros, vehicula a condimentum id, fermentum ut est. Ut ullamcorper sagittis facilisis. Vestibulum vestibulum, tellus in efficitur elementum, odio arcu volutpat turpis, non fringilla tellus enim vitae lacus. Donec eu fermentum eros. Donec ac lorem et nunc eleifend facilisis. Phasellus eget dignissim est. Nulla id sodales diam. Aenean ornare dignissim metus. Morbi consectetur eu lacus sit amet aliquam.";
+		//textField.text = "asdf a ab Curabiasdftur, abc Curabitur";
 		textField.settings.color = kha.Color.Black;
 		textField.fontSettings.fontSize = 24;
 		textField.settings.width=PercentLessFixed(100, 10);

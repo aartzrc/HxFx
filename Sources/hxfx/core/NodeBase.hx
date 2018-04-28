@@ -25,6 +25,8 @@ class NodeBase implements IBindable  {
 	public var layoutSize(default, null):Size; // This is the last size this node was told to use for layout purposes (set during layoutToSize() call)
 	@:bindable(force)
 	public var size(default, null):Size; // This is the current actual size of the node - calculated by the node during layoutToSize
+	@:bindable(force)
+	public var scissorSize(default, null):Size; // This is the boundary size - calculated by the node during layoutToSize
 	@:bindable
 	public var layoutIsValid:Bool = true; // Used to check if current layout is valid - set to true in layoutToSize()
 	@:bindable
@@ -57,6 +59,7 @@ class NodeBase implements IBindable  {
 			settings = useSettings;
 		}
 		size = new Size({});
+		scissorSize = new Size({});
 		layoutSize = new Size({});
 		redrawRects = new Array<Rect>();
 		Bind.bindAll(this.settings, _settings_Changed);
@@ -104,15 +107,19 @@ class NodeBase implements IBindable  {
 		// Update the size this node will use for display
 		var newSize = _calcSize(newLayoutSize);
 
-		// Copy values to bindings are maintained
-		size.w = newSize.w;
-		size.h = newSize.h;
+		// Copy values so bindings are maintained
+		size.w = scissorSize.w = newSize.w;
+		size.h = scissorSize.h = newSize.h;
 
 		// Reset the bounds cache
 		_hitBoundsCache = null;
 
-		// Update my children based on the final size calculated
-		_calcChildLayout();
+		// Update my children based on the new size calculated - children are allowed to push the parent node larger, scissorSize is used to hide overflow
+		newSize = _calcChildLayout(newSize);
+
+		// Copy values so bindings are maintained
+		size.w = newSize.w;
+		size.h = newSize.h;
 
 		// Parent listenes to layoutIsValid switching to true and calls render engine to update display
 		layoutIsValid = true;
@@ -161,9 +168,9 @@ class NodeBase implements IBindable  {
 	Determine child sizes and positions - by default give all children full view of the container and ignore children being larger/outside parent boundaries
 	Override this call for subclasses that have specific layout rules
 	**/
-	private function _calcChildLayout() {
+	private function _calcChildLayout(targetSize:Size) {
 		for(child in _childNodes) {
-			child.layoutToSize(new Size({w:size.w, h:size.h}));
+			child.layoutToSize(targetSize);
 
 			var childPos = _childPositions.get(child);
 
@@ -197,6 +204,18 @@ class NodeBase implements IBindable  {
 					childPos.y = (size.h * (v/100)) - child.size.h;
 			}
 		}
+
+		// Grow the final size to fit all children
+		if(settings.fitToChildren) {
+			for(child in _childNodes) {
+				// Adjust target size to cover all children
+				var childPos = _childPositions.get(child);
+				if(childPos.x + child.size.w > targetSize.w) targetSize.w = childPos.x + child.size.w;
+				if(childPos.y + child.size.h > targetSize.h) targetSize.h = childPos.y + child.size.h;
+			}
+		}
+
+		return targetSize;
 	}
 
 	public function addRedrawRect(redrawRect:Rect) {
@@ -394,7 +413,7 @@ class NodeBase implements IBindable  {
 
 	function _checkMouseInBounds():Bool {
 		// Check if this node is in bounds
-		var inBounds = hitBounds.inBounds(new Position({x: mouseData.x, y: mouseData.y}));
+		var inBounds = hitBounds.inBounds(new Position({x: mouseData.x, y: mouseData.y}), settings.overflowHidden ? scissorSize : null);
 
 		if(mouseData != null) {
 			mouseData.mouseInBounds = inBounds;
@@ -512,11 +531,30 @@ class NodeBase implements IBindable  {
 	public function render(g2: Graphics): Void {
 		// Draw myself - clear to my background color
 		// TODO: this should only clear invalid rects for the area within this node
-		// TODO: background is a layoutRule, should it be cached or loop through all layoutRules during rendering?
+
+		// Scissor is tricky, no push/pop stack and translations are not handled
+		// TODO: create a scissor stack that can be used to hide overflow in children
+		if(settings.overflowHidden) {
+			g2.scissor(Math.floor(g2.transformation._20)-1, Math.floor(g2.transformation._21)-1, Math.ceil(scissorSize.w)+2, Math.ceil(scissorSize.h)+2);
+		}
+
 		if(settings.bgColor.A > 0) {
 			var _c = g2.color;
 			g2.color = settings.bgColor;
 			g2.fillRect(0,0,size.w,size.h);
+			g2.color = _c;
+		}
+
+		_renderChildren(g2);
+
+		if(settings.overflowHidden) {
+			g2.disableScissor();
+		}
+
+		if(settings.overflowHidden && debugLayout) {
+			var _c = g2.color;
+			g2.color = kha.Color.fromFloats(0,0,1,.5);
+			g2.drawRect(0, 0, scissorSize.w, scissorSize.h, 2);
 			g2.color = _c;
 		}
 		
@@ -547,7 +585,6 @@ class NodeBase implements IBindable  {
 			}
 			g2.color = _c;
 		}
-		_renderChildren(g2);
 	}
 
 	function _renderChildren(g2:Graphics) {
@@ -593,6 +630,8 @@ class NodeBaseSettings implements IBindable {
 	public var bgColor:Color = kha.Color.Transparent;
 	public var color:Color = kha.Color.Transparent;
 	public var cursor:String = null; // Cursor/pointer - in html target, this pushes to the DOM - see cursor names here: https://www.w3schools.com/cssref/playit.asp?filename=playcss_cursor&preval=copy
+	public var overflowHidden:Bool = false; // Scissor based on LayoutSize
+	public var fitToChildren:Bool = false; // NodeBase final size will fit all children inside
 
 	public function new() {
 		// Any init/defaults?

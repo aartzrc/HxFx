@@ -24,7 +24,7 @@ class BorderContainer extends GridContainer {
 	var cornerLB:BorderCorner;
 
 	public var viewport:AbsoluteContainer;
-	var centerCell:NodeBase;
+	var viewportCell:NodeBase;
 
 	public var dragFocus:NodeBase;
 
@@ -41,20 +41,22 @@ class BorderContainer extends GridContainer {
 		cornerRB = new BorderCorner(this, RB);
 		cornerLB = new BorderCorner(this, LB);
 
-		centerCell = getCell(1,1);
-		centerCell.settings.width = Percent(100);
-		centerCell.settings.height = Percent(100);
-		centerCell.settings.alignX = PercentM(50);
-		centerCell.settings.alignY = PercentM(50);
+		viewportCell = getCell(1,1);
+		viewportCell.settings.width = Percent(100);
+		viewportCell.settings.height = Percent(100);
+		viewportCell.settings.alignX = PercentM(50);
+		viewportCell.settings.alignY = PercentM(50);
 		viewport = new AbsoluteContainer();
 		viewport.settings.width = Percent(100);
 		viewport.settings.height = Percent(100);
-		viewport.settings.alignX = PercentM(50);
-		viewport.settings.alignY = PercentM(50);
+		viewport.settings.alignX = FixedLT(0); //PercentM(50);
+		viewport.settings.alignY = FixedLT(0); //PercentM(50);
+		viewport.settings.fitToChildren = true; // Grow viewport as needed to fit all children
 
-		viewport.parent = centerCell; // Attach to the center
+		viewport.parent = viewportCell; // Attach to the center
+		viewport.settings.overflowHidden = true; // Scissor any viewport overflow
 		
-		setChildIndex(centerCell, _childNodes.length-1); // Make the viewport render last
+		setChildIndex(viewportCell, _childNodes.length-1); // Make the viewport render last
 		
 		Bind.bind(borderContainerSettings.bgColor, setBGColor);
 	}
@@ -89,8 +91,8 @@ class BorderContainer extends GridContainer {
 		right.parent.settings.height = PercentLessFixed(100, cornerSize*2);
 		right.parent.settings.width = Fixed(viewportOffset);
 
-		centerCell.settings.width = PercentLessFixed(100, viewportOffset*2);
-		centerCell.settings.height = PercentLessFixed(100, viewportOffset*2);
+		viewportCell.settings.width = PercentLessFixed(100, viewportOffset*2);
+		viewportCell.settings.height = PercentLessFixed(100, viewportOffset*2);
     }
 
 	override public function render(g2: Graphics): Void {

@@ -152,7 +152,11 @@ class HitBounds {
 
 	public function new() {}
 
-	public function inBounds(loc:Position):Bool {
+	public function inBounds(loc:Position, ?scissorSize:Size):Bool {
+		if(scissorSize != null) {
+			if(loc.x > scissorSize.w || loc.y>scissorSize.h) return false;
+		}
+		
 		for(b in bounds) {
 			if(b.inBounds(loc)) return true;
 		}

@@ -8,36 +8,42 @@ class ScrollContainer extends GridContainer {
     public static inline var scrollBarWidth = 20;
     var vScroll:ScrollBar;
     var hScroll:ScrollBar;
+    var cornerCell:NodeBase;
+    public var viewportCell:NodeBase;
 
     public var viewport:AbsoluteContainer;
-    var viewportCell:NodeBase;
+    
     
     public function new() {
 		super(2,2, new ScrollContainerSettings()); // Create a 2x2 grid with default settings
 
-        vScroll = new ScrollBar(this, Vertical);
-		hScroll = new ScrollBar(this, Horizontal);
-
         viewportCell = getCell(0,0);
-		viewportCell.settings.width = PercentLessFixed(100, ScrollContainer.scrollBarWidth);
-		viewportCell.settings.height = PercentLessFixed(100, ScrollContainer.scrollBarWidth);
 		viewportCell.settings.alignX = FixedLT(0);
 		viewportCell.settings.alignY = FixedLT(0);
 
 		viewport = new AbsoluteContainer();
 		viewport.settings.width = Percent(100);
 		viewport.settings.height = Percent(100);
-		viewport.settings.alignX = PercentM(50);
-		viewport.settings.alignY = PercentM(50);
+		viewport.settings.alignX = FixedLT(0); //PercentM(50);
+		viewport.settings.alignY = FixedLT(0); //PercentM(50);
+        viewport.settings.fitToChildren = true; // Grow viewport as needed to fit all children - this is how scroll size/position is determined
 
 		viewport.parent = viewportCell; // Attach to the center
+        viewport.settings.overflowHidden = true; // Scissor any viewport overflow
+
+        // Create the scroll bars
+        vScroll = new ScrollBar(this, Vertical);
+		hScroll = new ScrollBar(this, Horizontal);
 
         // Lower right corner
-        var corner = getCell(1,1);
-        corner.settings.alignX = PercentRB(100);
-        corner.settings.alignY = PercentRB(100);
+        cornerCell = getCell(1,1);
+        cornerCell.settings.alignX = PercentRB(100);
+        cornerCell.settings.alignY = PercentRB(100);
 		
 		setChildIndex(viewportCell, _childNodes.length-1); // Make the viewport render last
+
+        Bind.bind(vScroll.size.w, updateCorner);
+        Bind.bind(hScroll.size.h, updateCorner);
     }
 
 	public var scrollContainerSettings(get,never):ScrollContainerSettings;
@@ -46,20 +52,26 @@ class ScrollContainer extends GridContainer {
 		return cast settings;
 	}
 
-    public function updateCorner() {
-		if(scrollContainerSettings.scrollHorizontal) {
-            getCell(1,1).settings.height = Fixed(ScrollContainer.scrollBarWidth);
-        }
-        if(scrollContainerSettings.scrollVertical) {
-            getCell(1,1).settings.width = Fixed(ScrollContainer.scrollBarWidth);
-        }
+    public function updateCorner(from:Float, to:Float) {
+        cornerCell.settings.height = Fixed(hScroll.size.h);
+        cornerCell.settings.width = Fixed(vScroll.size.w);
+        vScroll.parent.settings.height = PercentLessFixed(100, hScroll.size.h);
+        hScroll.parent.settings.width = PercentLessFixed(100, vScroll.size.w);
+        viewportCell.settings.width = PercentLessFixed(100, vScroll.size.w);
+		viewportCell.settings.height = PercentLessFixed(100, hScroll.size.h);
     }
 }
 
 @:bindable
 class ScrollContainerSettings extends NodeBaseSettings implements IBindable {
-	public var scrollHorizontal:Bool = true;
-    public var scrollVertical:Bool = true;
+	public var scrollHorizontal:ScrollBarShow = OnDemand;
+    public var scrollVertical:ScrollBarShow = OnDemand;
+}
+
+enum ScrollBarShow {
+    Never;
+    OnDemand;
+    Always;
 }
 
 // TODO: Move this to components
@@ -67,6 +79,11 @@ class ScrollContainerSettings extends NodeBaseSettings implements IBindable {
 class ScrollBar extends NodeBase {
     var orientation:Orientation;
     var container:ScrollContainer;
+
+    var lessArrow:AbsoluteContainer = new AbsoluteContainer();
+    var moreArrow:AbsoluteContainer = new AbsoluteContainer();
+    var sliderFill:AbsoluteContainer = new AbsoluteContainer();
+    var slider:AbsoluteContainer = new AbsoluteContainer();
 
     public function new(container:ScrollContainer, orientation:Orientation) {
 		super();
@@ -87,22 +104,39 @@ class ScrollBar extends NodeBase {
                 settings.height = Percent(100);
 				settings.alignY = PercentM(50);
 
+                // Do some background so we can see
+                settings.bgColor = kha.Color.Green;
+
 				// Attach to the right top cell
 				parent = container.getCell(1,0);
 
-				// Tell my parent to stay in the right middle
+				// Tell my parent to stay at the top
 				parent.settings.alignX = PercentRB(100);
-				parent.settings.alignY = PercentM(50);
+				parent.settings.alignY = FixedLT(0);
 
-                // Full height, fixed 20px width
+                // Full height, fixed width
                 parent.settings.height = Percent(100);
-                if(container.scrollContainerSettings.scrollVertical) {
-				    parent.settings.width = Fixed(ScrollContainer.scrollBarWidth);
-                } else {
-                    parent.settings.width = Fixed(0); // Hide scroll bar
-                }
+                // TODO: Setting Fixed(0) doesn't work! Grid reverts to default size
+                parent.settings.width = Fixed(.01); // Hide scroll bar by default - showHideScrollBar will adjust
+
+                // Up arrow
+                lessArrow.settings.width = Percent(100);
+                lessArrow.settings.height = Fixed(ScrollContainer.scrollBarWidth);
+                lessArrow.settings.alignX = PercentLT(0);
+                lessArrow.settings.alignY = PercentLT(0);
+                lessArrow.settings.bgColor = kha.Color.Blue;
+                lessArrow.parent = this;
+
+                // Down arrow
+                moreArrow.settings.width = Percent(100);
+                moreArrow.settings.height = Fixed(ScrollContainer.scrollBarWidth);
+                moreArrow.settings.alignX = PercentRB(100);
+                moreArrow.settings.alignY = PercentRB(100);
+                moreArrow.settings.bgColor = kha.Color.Blue;
+                moreArrow.parent = this;
 
                 Bind.bind(container.scrollContainerSettings.scrollVertical, showHideScrollBar);
+                showHideScrollBar(Never, container.scrollContainerSettings.scrollVertical);
             case Horizontal:
                 // Fill parent height, stick to bottom
 				settings.height = Percent(100);
@@ -112,42 +146,109 @@ class ScrollBar extends NodeBase {
                 settings.width = Percent(100);
 				settings.alignX = PercentM(50);
 
+                // Do some background so we can see
+                settings.bgColor = kha.Color.Green;
+
 				// Attach to the bottom left cell
 				parent = container.getCell(0,1);
 
-				// Tell my parent to stay in the bottom middle
+				// Tell my parent to stay to the left
 				parent.settings.alignY = PercentRB(100);
-				parent.settings.alignX = PercentM(50);
+				parent.settings.alignX = FixedLT(0);
 
-                // Full width, fixed 20px height
+                // Full width, fixed height
                 parent.settings.width = Percent(100);
-                if(container.scrollContainerSettings.scrollHorizontal) {
-				    parent.settings.height = Fixed(ScrollContainer.scrollBarWidth);
-                } else {
-                    parent.settings.height = Fixed(0); // Hide scroll bar
-                }
-                Bind.bind(container.scrollContainerSettings.scrollVertical, showHideScrollBar);
+                // TODO: Setting Fixed(0) doesn't work! Grid reverts to default size
+                parent.settings.height = Fixed(.01); // Hide scroll bar by default - showHideScrollBar will adjust
+                
+                // Left arrow
+                lessArrow.settings.width = Fixed(ScrollContainer.scrollBarWidth);
+                lessArrow.settings.height = Percent(100);
+                lessArrow.settings.alignX = PercentLT(0);
+                lessArrow.settings.alignY = PercentLT(0);
+                lessArrow.settings.bgColor = kha.Color.Blue;
+                lessArrow.parent = this;
+
+                // Right arrow
+                moreArrow.settings.width = Fixed(ScrollContainer.scrollBarWidth);
+                moreArrow.settings.height = Percent(100);
+                moreArrow.settings.alignX = PercentRB(100);
+                moreArrow.settings.alignY = PercentRB(100);
+                moreArrow.settings.bgColor = kha.Color.Blue;
+                moreArrow.parent = this;
+
+                Bind.bind(container.scrollContainerSettings.scrollHorizontal, showHideScrollBar);
+                showHideScrollBar(Never, container.scrollContainerSettings.scrollHorizontal);
         }
     }
 
-    function showHideScrollBar(from:Bool, to:Bool) {
-        trace("here");
+    function showHideScrollBar(from:ScrollBarShow, to:ScrollBarShow) {
         switch(orientation) {
             case Vertical:
-                if(container.scrollContainerSettings.scrollVertical) {
-				    parent.settings.width = Fixed(ScrollContainer.scrollBarWidth);
-                } else {
-                    parent.settings.width = Fixed(0); // Hide scroll bar
+                switch(container.scrollContainerSettings.scrollVertical) {
+                    case Always:
+                        parent.settings.width = Fixed(ScrollContainer.scrollBarWidth);
+                        Bind.bind(container.viewport.size.h, updateScrollbar);
+                    case OnDemand:
+                        parent.settings.width = Fixed(.01); // Hide scroll bar
+                        Bind.bind(container.viewport.size.h, updateScrollbar);
+                    case Never:
+                        parent.settings.width = Fixed(.01); // Hide scroll bar
+                        Bind.unbind(container.viewport.size.h, updateScrollbar);
                 }
             case Horizontal:
-                if(container.scrollContainerSettings.scrollHorizontal) {
-				    parent.settings.height = Fixed(ScrollContainer.scrollBarWidth);
-                } else {
-                    parent.settings.height = Fixed(0); // Hide scroll bar
+                switch(container.scrollContainerSettings.scrollHorizontal) {
+                    case Always:
+                        parent.settings.height = Fixed(ScrollContainer.scrollBarWidth);
+                        Bind.bind(container.viewport.size.w, updateScrollbar);
+                    case OnDemand:
+                        parent.settings.height = Fixed(.01); // Hide scroll bar
+                        Bind.bind(container.viewport.size.w, updateScrollbar);
+                    case Never:
+                        parent.settings.height = Fixed(.01); // Hide scroll bar
+                        Bind.unbind(container.viewport.size.w, updateScrollbar);
                 }
         }
+    }
 
-        container.updateCorner();
+    function updateScrollbar(from:Float, to:Float) {
+        //trace(container.viewport.size);
+        //trace(container.viewportCell.scissorSize);
+
+        switch(orientation) {
+            case Vertical:
+                switch(container.scrollContainerSettings.scrollVertical) {
+                    case Always:
+                        // Update range
+                    case OnDemand:
+                        // Show/hide check
+                        if(container.viewport.size.h > container.viewportCell.scissorSize.h) {
+                            // Show scrollbar
+                            parent.settings.width = Fixed(ScrollContainer.scrollBarWidth);
+                        } else {
+                            // Hide scrollbar
+                            parent.settings.width = Fixed(.01); // Hide scroll bar
+                        }
+                    case Never:
+                        // Nothing
+                }
+            case Horizontal:
+                switch(container.scrollContainerSettings.scrollHorizontal) {
+                    case Always:
+                        // Update range
+                    case OnDemand:
+                        // Show/hide check
+                        if(container.viewport.size.w > container.viewportCell.scissorSize.w) {
+                            // Show scrollbar
+                            parent.settings.height = Fixed(ScrollContainer.scrollBarWidth);
+                        } else {
+                            // Hide scrollbar
+                            parent.settings.height = Fixed(.01); // Hide scroll bar
+                        }
+                    case Never:
+                        // Nothing
+                }
+        }
     }
 }
 
