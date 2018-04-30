@@ -123,10 +123,10 @@ class Window implements IBindable {
         trace("Shutdown");
     }
 
-	var cursorStack:List<String> = new List<String>();
+	//var cursorStack:List<String> = new List<String>();
 
 	public function setCursor(cursorName:String) {
-		var useCursorName:String = null;
+		/*var useCursorName:String = null;
 		
 		if(cursorName == null) {
 			cursorStack.pop();
@@ -137,11 +137,11 @@ class Window implements IBindable {
 		// Grab the current cursor from the stack
 		if(cursorStack.length>0) {
 			useCursorName = cursorStack.first();
-		}
+		}*/
 
 		// Cursor change needs to be handled per target, maybe push in to Kha?
 		#if js
-		js.Browser.window.document.getElementsByTagName("canvas")[0].style.cursor = useCursorName;
+		js.Browser.window.document.getElementsByTagName("canvas")[0].style.cursor = cursorName;
 		#end
 	}
 

@@ -68,8 +68,8 @@ class NodeBase implements IBindable  {
 		Bind.bind(this.mouseSubscribe, _mouseSubscribe);
 
 		// Debug in bounds
-		mouseSubscribe = true;
-		Bind.bind(this.mouseData.mouseInBounds, _debugBounds);
+		/*mouseSubscribe = true;
+		Bind.bind(this.mouseData.mouseInBounds, _debugBounds);*/
 	}
 
 	private function _debugBounds(from:Bool, to:Bool) {
@@ -188,6 +188,8 @@ class NodeBase implements IBindable  {
 					childPos.x = (size.w * (v/100)) - (child.size.w/2); // Calc to middle of parent node, then move left 1/2 of child node size
 				case Align.PercentRB(v):
 					childPos.x = (size.w * (v/100)) - child.size.w;
+				case Align.PercentLTLessFixed(p, f):
+					childPos.x = (size.w - f) * (p/100);
 			}
 			switch(child.settings.alignY) {
 				case Align.FixedLT(v):
@@ -202,6 +204,8 @@ class NodeBase implements IBindable  {
 					childPos.y = (size.h * (v/100)) - (child.size.h/2); // Calc to middle of parent node, then move left 1/2 of child node size
 				case Align.PercentRB(v):
 					childPos.y = (size.h * (v/100)) - child.size.h;
+				case Align.PercentLTLessFixed(p, f):
+					childPos.y = (size.h - f) * (p/100);
 			}
 		}
 
@@ -412,34 +416,35 @@ class NodeBase implements IBindable  {
 	}
 
 	function _checkMouseInBounds():Bool {
-		// Check if this node is in bounds
-		var inBounds = hitBounds.inBounds(new Position({x: mouseData.x, y: mouseData.y}), settings.overflowHidden ? scissorSize : null);
-
 		if(mouseData != null) {
-			mouseData.mouseInBounds = inBounds;
-		}
+			// Check if this node is in bounds
+			var inBounds = hitBounds.inBounds(new Position({x: mouseData.x, y: mouseData.y}), settings.overflowHidden ? scissorSize : null);
 
-		// This node is in bounds, find which child is in bounds
-		if(inBounds) {
-			var foundChildInBounds = false;
-			var i = _childNodes.length-1; // Run bounds check reverse from display order (last drawn should have first bounds check)
-			while(i>=0) {
-				var c = _childNodes[i];
-				// Check the child, it will set its in bounds flag
-				if(!foundChildInBounds && c._checkMouseInBounds()) {
-					// Stop looking when the child is found
-					foundChildInBounds = true;
-				} else {
-					// Clear all child in bounds flags
-					c._clearMouseInBounds();
+			mouseData.mouseInBounds = inBounds;
+
+			// This node is in bounds, find which child is in bounds
+			if(inBounds) {
+				var foundChildInBounds = false;
+				var i = _childNodes.length-1; // Run bounds check reverse from display order (last drawn should have first bounds check)
+				while(i>=0) {
+					var c = _childNodes[i];
+					// Check the child, it will set its in bounds flag
+					if(!foundChildInBounds && c._checkMouseInBounds()) {
+						// Stop looking when the child is found
+						foundChildInBounds = true;
+					} else {
+						// Clear all child in bounds flags
+						c._clearMouseInBounds();
+					}
+					i--;
 				}
-				i--;
+
+				return true;
 			}
 
-			return true;
+			return inBounds;
 		}
-
-		return inBounds;
+		return false;
 	}
 
 	function _clearMouseInBounds() {
@@ -565,7 +570,7 @@ class NodeBase implements IBindable  {
 			g2.drawRect(0,0,size.w,size.h);
 			g2.color = _c;
 		}
-		if(debugHitbounds) {
+		/*if(debugHitbounds) {
 			var _c = g2.color;
 			g2.color = kha.Color.fromFloats(1,0,0,.2);
 			for(b in hitBounds.bounds) {
@@ -584,7 +589,7 @@ class NodeBase implements IBindable  {
 				}
 			}
 			g2.color = _c;
-		}
+		}*/
 	}
 
 	function _renderChildren(g2:Graphics) {
@@ -619,6 +624,7 @@ enum Align {
 	PercentLT(v:Float); // Left or top edge of node is a percent position from left or top of layout area
 	PercentM(v:Float); // Middle of node is a percent position from left of layout area
 	PercentRB(v:Float); // Right or bottom edge of node is a percent position from right or bottom of layout area
+	PercentLTLessFixed(percent:Float, fixedFloat:Float); // Reduce the dimension by the fixed value, then use percent size
 }
 
 @:bindable

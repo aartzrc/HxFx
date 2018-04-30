@@ -53,8 +53,8 @@ class BorderContainer extends GridContainer {
 		viewport.settings.alignY = FixedLT(0); //PercentM(50);
 		viewport.settings.fitToChildren = true; // Grow viewport as needed to fit all children
 
-		viewport.parent = viewportCell; // Attach to the center
-		viewport.settings.overflowHidden = true; // Scissor any viewport overflow
+		viewport.parent = viewportCell; // Attach to the center cell
+		viewportCell.settings.overflowHidden = true; // Scissor any viewport overflow
 		
 		setChildIndex(viewportCell, _childNodes.length-1); // Make the viewport render last
 		
@@ -284,9 +284,9 @@ class BorderEdge extends NodeBase {
 			case Left, Top:
 				// No resize?
 			case Right:
-				container.settings.width = Fixed(container.mouseData.x);
+				container.settings.width = Fixed(container.mouseData.x + (container.borderContainerSettings.borderWidth/2));
 			case Bottom:
-				container.settings.height = Fixed(container.mouseData.y);
+				container.settings.height = Fixed(container.mouseData.y + (container.borderContainerSettings.borderWidth/2));
 		}
 	}
 
@@ -434,7 +434,7 @@ class BorderCorner extends NodeBase {
 			case LT, RT, LB:
 				// No resize?
 			case RB:
-				var cornerOffset = cornerDisplay.radius * .6 + cornerDisplay.width/2;
+				var cornerOffset = cornerDisplay.radius * .3 + cornerDisplay.width/2;
 				container.settings.height = Fixed(container.mouseData.y + cornerOffset);
 				container.settings.width = Fixed(container.mouseData.x + cornerOffset);
 		}

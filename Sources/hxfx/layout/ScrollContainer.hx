@@ -12,6 +12,7 @@ class ScrollContainer extends GridContainer {
     public var viewportCell:NodeBase;
 
     public var viewport:AbsoluteContainer;
+    public var viewportPosition:Position;
     
     
     public function new() {
@@ -24,16 +25,23 @@ class ScrollContainer extends GridContainer {
 		viewport = new AbsoluteContainer();
 		viewport.settings.width = Percent(100);
 		viewport.settings.height = Percent(100);
-		viewport.settings.alignX = FixedLT(0); //PercentM(50);
-		viewport.settings.alignY = FixedLT(0); //PercentM(50);
+
+        viewportPosition = new Position({x: 0, y:0 });
+        viewport.settings.alignX = FixedLT(viewportPosition.x);
+		viewport.settings.alignY = FixedLT(viewportPosition.y);
+        Bind.bind(viewportPosition.x, updateScrollPosition);
+        Bind.bind(viewportPosition.y, updateScrollPosition);
+        
         viewport.settings.fitToChildren = true; // Grow viewport as needed to fit all children - this is how scroll size/position is determined
 
 		viewport.parent = viewportCell; // Attach to the center
-        viewport.settings.overflowHidden = true; // Scissor any viewport overflow
+        viewportCell.settings.overflowHidden = true; // Scissor any viewport overflow
 
         // Create the scroll bars
         vScroll = new ScrollBar(this, Vertical);
+        Bind.bind(vScroll.pos, updateViewportPosition);
 		hScroll = new ScrollBar(this, Horizontal);
+        Bind.bind(hScroll.pos, updateViewportPosition);
 
         // Lower right corner
         cornerCell = getCell(1,1);
@@ -44,6 +52,18 @@ class ScrollContainer extends GridContainer {
 
         Bind.bind(vScroll.size.w, updateCorner);
         Bind.bind(hScroll.size.h, updateCorner);
+    }
+
+    public function updateScrollPosition(from:Float, to:Float) {
+        vScroll.pos = -viewportPosition.y;
+        hScroll.pos = -viewportPosition.x;
+    }
+
+    public function updateViewportPosition(from:Float, to:Float) {
+        viewportPosition.y = -vScroll.pos;
+        viewportPosition.x = -hScroll.pos;
+        viewport.settings.alignX = FixedLT(viewportPosition.x);
+		viewport.settings.alignY = FixedLT(viewportPosition.y);
     }
 
 	public var scrollContainerSettings(get,never):ScrollContainerSettings;
@@ -83,7 +103,12 @@ class ScrollBar extends NodeBase {
     var lessArrow:AbsoluteContainer = new AbsoluteContainer();
     var moreArrow:AbsoluteContainer = new AbsoluteContainer();
     var sliderFill:AbsoluteContainer = new AbsoluteContainer();
-    var slider:AbsoluteContainer = new AbsoluteContainer();
+    public var slider:AbsoluteContainer = new AbsoluteContainer();
+
+    public var min:Float = 0;
+    public var max:Float = 0;
+    public var pos:Float = 0;
+    public var scrollSpeed:Float = 10;
 
     public function new(container:ScrollContainer, orientation:Orientation) {
 		super();
@@ -104,9 +129,6 @@ class ScrollBar extends NodeBase {
                 settings.height = Percent(100);
 				settings.alignY = PercentM(50);
 
-                // Do some background so we can see
-                settings.bgColor = kha.Color.Green;
-
 				// Attach to the right top cell
 				parent = container.getCell(1,0);
 
@@ -124,16 +146,24 @@ class ScrollBar extends NodeBase {
                 lessArrow.settings.height = Fixed(ScrollContainer.scrollBarWidth);
                 lessArrow.settings.alignX = PercentLT(0);
                 lessArrow.settings.alignY = PercentLT(0);
-                lessArrow.settings.bgColor = kha.Color.Blue;
-                lessArrow.parent = this;
-
+                
                 // Down arrow
                 moreArrow.settings.width = Percent(100);
                 moreArrow.settings.height = Fixed(ScrollContainer.scrollBarWidth);
                 moreArrow.settings.alignX = PercentRB(100);
                 moreArrow.settings.alignY = PercentRB(100);
-                moreArrow.settings.bgColor = kha.Color.Blue;
-                moreArrow.parent = this;
+
+                // Fill
+                sliderFill.settings.width = Percent(100);
+                sliderFill.settings.height = PercentLessFixed(100, ScrollContainer.scrollBarWidth*2);
+                sliderFill.settings.alignX = PercentLT(0);
+                sliderFill.settings.alignY = PercentM(50);
+
+                // Slider box
+                slider.settings.width = Percent(100);
+                slider.settings.height = Fixed(ScrollContainer.scrollBarWidth); // TODO: this should adjust based on visible space
+                slider.settings.alignX = PercentLT(0);
+                slider.settings.alignY = FixedLT(0);
 
                 Bind.bind(container.scrollContainerSettings.scrollVertical, showHideScrollBar);
                 showHideScrollBar(Never, container.scrollContainerSettings.scrollVertical);
@@ -145,9 +175,6 @@ class ScrollBar extends NodeBase {
                 // 100% width, float to middle
                 settings.width = Percent(100);
 				settings.alignX = PercentM(50);
-
-                // Do some background so we can see
-                settings.bgColor = kha.Color.Green;
 
 				// Attach to the bottom left cell
 				parent = container.getCell(0,1);
@@ -166,20 +193,50 @@ class ScrollBar extends NodeBase {
                 lessArrow.settings.height = Percent(100);
                 lessArrow.settings.alignX = PercentLT(0);
                 lessArrow.settings.alignY = PercentLT(0);
-                lessArrow.settings.bgColor = kha.Color.Blue;
-                lessArrow.parent = this;
 
                 // Right arrow
                 moreArrow.settings.width = Fixed(ScrollContainer.scrollBarWidth);
                 moreArrow.settings.height = Percent(100);
                 moreArrow.settings.alignX = PercentRB(100);
                 moreArrow.settings.alignY = PercentRB(100);
-                moreArrow.settings.bgColor = kha.Color.Blue;
-                moreArrow.parent = this;
+
+                // Fill
+                sliderFill.settings.height = Percent(100);
+                sliderFill.settings.width = PercentLessFixed(100, ScrollContainer.scrollBarWidth*2);
+                sliderFill.settings.alignX = PercentM(50);
+                sliderFill.settings.alignY = PercentLT(0);
+
+                // Slider box
+                slider.settings.width = Fixed(ScrollContainer.scrollBarWidth); // TODO: this should adjust based on visible space
+                slider.settings.height = Percent(100);
+                slider.settings.alignX = FixedLT(0);
+                slider.settings.alignY = PercentLT(0);
 
                 Bind.bind(container.scrollContainerSettings.scrollHorizontal, showHideScrollBar);
                 showHideScrollBar(Never, container.scrollContainerSettings.scrollHorizontal);
         }
+
+        // Do some background so we can see
+        settings.bgColor = kha.Color.Green;
+
+        lessArrow.settings.bgColor = kha.Color.Blue;
+        lessArrow.mouseSubscribe = true;
+        lessArrow.parent = this;
+
+        moreArrow.settings.bgColor = kha.Color.Blue;
+        moreArrow.mouseSubscribe = true;
+        moreArrow.parent = this;
+
+        sliderFill.settings.bgColor = kha.Color.Red;
+        sliderFill.mouseSubscribe = true;
+        sliderFill.parent = this;
+
+        slider.settings.bgColor = kha.Color.Pink;
+        slider.mouseSubscribe = true;
+        slider.parent = sliderFill;
+
+        Bind.bind(lessArrow.mouseData.b1down, _lessMouseDown);
+        Bind.bind(moreArrow.mouseData.b1down, _moreMouseDown);
     }
 
     function showHideScrollBar(from:ScrollBarShow, to:ScrollBarShow) {
@@ -225,6 +282,11 @@ class ScrollBar extends NodeBase {
                         if(container.viewport.size.h > container.viewportCell.scissorSize.h) {
                             // Show scrollbar
                             parent.settings.width = Fixed(ScrollContainer.scrollBarWidth);
+                            
+                            // Adjust slider
+                            max = container.viewport.size.h - container.viewportCell.scissorSize.h;
+                            slider.settings.height = Percent((container.viewportCell.scissorSize.h / container.viewport.size.h)*100);
+                            slider.settings.alignY = PercentLTLessFixed((pos/(max-min))*100, slider.size.h);
                         } else {
                             // Hide scrollbar
                             parent.settings.width = Fixed(.01); // Hide scroll bar
@@ -241,6 +303,11 @@ class ScrollBar extends NodeBase {
                         if(container.viewport.size.w > container.viewportCell.scissorSize.w) {
                             // Show scrollbar
                             parent.settings.height = Fixed(ScrollContainer.scrollBarWidth);
+
+                            // Adjust slider
+                            max = container.viewport.size.w - container.viewportCell.scissorSize.w;
+                            slider.settings.width = Percent((container.viewportCell.scissorSize.w / container.viewport.size.w)*100);
+                            slider.settings.alignX = PercentLTLessFixed((pos/(max-min))*100, slider.size.w);
                         } else {
                             // Hide scrollbar
                             parent.settings.height = Fixed(.01); // Hide scroll bar
@@ -248,6 +315,22 @@ class ScrollBar extends NodeBase {
                     case Never:
                         // Nothing
                 }
+        }
+    }
+
+    function _lessMouseDown(from:Bool, to:Bool) {
+        if(lessArrow.mouseData.mouseInBounds) {
+            var newPos = pos - scrollSpeed;
+            if(newPos < min) newPos = min;
+            pos = newPos;
+        }
+    }
+
+    function _moreMouseDown(from:Bool, to:Bool) {
+        if(moreArrow.mouseData.mouseInBounds) {
+            var newPos = pos + scrollSpeed;
+            if(newPos > max) newPos = max;
+            pos = newPos;
         }
     }
 }
