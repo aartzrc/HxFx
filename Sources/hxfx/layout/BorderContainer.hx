@@ -59,6 +59,8 @@ class BorderContainer extends GridContainer {
 		setChildIndex(viewportCell, _childNodes.length-1); // Make the viewport render last
 		
 		Bind.bind(borderContainerSettings.bgColor, setBGColor);
+
+		Bind.notify(borderContainerSettings.borderWidth, borderContainerSettings.borderWidth,borderContainerSettings.borderWidth);
 	}
 
 	public var borderContainerSettings(get,never):BorderContainerSettings;
@@ -216,6 +218,7 @@ class BorderEdge extends NodeBase {
 	}
 
     function setBorderWidth(from:Float, to:Float) {
+		trace(to);
 		switch(edge) {
 			case Top, Bottom:
 				border.settings.height = Fixed(to);

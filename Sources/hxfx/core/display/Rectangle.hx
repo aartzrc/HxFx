@@ -11,6 +11,7 @@ class Rectangle extends DisplayBase {
 
     override public function render(g2: Graphics): Void {
         if(color.A == 0 && fillColor.A == 0) return; // Transparent, nothing to draw
+        if(size.h == 0 || size.w == 0) return; // Too small, ignore it
 
         if(fillColor.A > 0) {
             g2.color = fillColor;

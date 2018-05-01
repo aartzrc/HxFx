@@ -103,7 +103,8 @@ class ScrollBar extends NodeBase {
     var lessArrow:AbsoluteContainer = new AbsoluteContainer();
     var moreArrow:AbsoluteContainer = new AbsoluteContainer();
     var sliderFill:AbsoluteContainer = new AbsoluteContainer();
-    public var slider:AbsoluteContainer = new AbsoluteContainer();
+    //public var slider:AbsoluteContainer = new AbsoluteContainer();
+    public var slider:BorderContainer = new BorderContainer();
 
     public var min:Float = 0;
     public var max:Float = 0;
@@ -139,7 +140,7 @@ class ScrollBar extends NodeBase {
                 // Full height, fixed width
                 parent.settings.height = Percent(100);
                 // TODO: Setting Fixed(0) doesn't work! Grid reverts to default size
-                parent.settings.width = Fixed(.01); // Hide scroll bar by default - showHideScrollBar will adjust
+                parent.settings.width = Fixed(0); // Hide scroll bar by default - showHideScrollBar will adjust
 
                 // Up arrow
                 lessArrow.settings.width = Percent(100);
@@ -186,7 +187,7 @@ class ScrollBar extends NodeBase {
                 // Full width, fixed height
                 parent.settings.width = Percent(100);
                 // TODO: Setting Fixed(0) doesn't work! Grid reverts to default size
-                parent.settings.height = Fixed(.01); // Hide scroll bar by default - showHideScrollBar will adjust
+                parent.settings.height = Fixed(0); // Hide scroll bar by default - showHideScrollBar will adjust
                 
                 // Left arrow
                 lessArrow.settings.width = Fixed(ScrollContainer.scrollBarWidth);
@@ -217,7 +218,7 @@ class ScrollBar extends NodeBase {
         }
 
         // Do some background so we can see
-        settings.bgColor = kha.Color.Green;
+        //settings.bgColor = kha.Color.Green;
 
         lessArrow.settings.bgColor = kha.Color.Blue;
         lessArrow.mouseSubscribe = true;
@@ -227,11 +228,12 @@ class ScrollBar extends NodeBase {
         moreArrow.mouseSubscribe = true;
         moreArrow.parent = this;
 
-        sliderFill.settings.bgColor = kha.Color.Red;
+        sliderFill.settings.bgColor = kha.Color.fromFloats(0,0,0,.3);
         sliderFill.mouseSubscribe = true;
         sliderFill.parent = this;
 
-        slider.settings.bgColor = kha.Color.Pink;
+        slider.borderContainerSettings.borderColor = kha.Color.Black;
+        slider.settings.bgColor = kha.Color.fromFloats(0,0,0,.3);
         slider.mouseSubscribe = true;
         slider.parent = sliderFill;
 
@@ -247,10 +249,10 @@ class ScrollBar extends NodeBase {
                         parent.settings.width = Fixed(ScrollContainer.scrollBarWidth);
                         Bind.bind(container.viewport.size.h, updateScrollbar);
                     case OnDemand:
-                        parent.settings.width = Fixed(.01); // Hide scroll bar
+                        parent.settings.width = Fixed(0); // Hide scroll bar
                         Bind.bind(container.viewport.size.h, updateScrollbar);
                     case Never:
-                        parent.settings.width = Fixed(.01); // Hide scroll bar
+                        parent.settings.width = Fixed(0); // Hide scroll bar
                         Bind.unbind(container.viewport.size.h, updateScrollbar);
                 }
             case Horizontal:
@@ -259,10 +261,10 @@ class ScrollBar extends NodeBase {
                         parent.settings.height = Fixed(ScrollContainer.scrollBarWidth);
                         Bind.bind(container.viewport.size.w, updateScrollbar);
                     case OnDemand:
-                        parent.settings.height = Fixed(.01); // Hide scroll bar
+                        parent.settings.height = Fixed(0); // Hide scroll bar
                         Bind.bind(container.viewport.size.w, updateScrollbar);
                     case Never:
-                        parent.settings.height = Fixed(.01); // Hide scroll bar
+                        parent.settings.height = Fixed(0); // Hide scroll bar
                         Bind.unbind(container.viewport.size.w, updateScrollbar);
                 }
         }
@@ -289,7 +291,7 @@ class ScrollBar extends NodeBase {
                             slider.settings.alignY = PercentLTLessFixed((pos/(max-min))*100, slider.size.h);
                         } else {
                             // Hide scrollbar
-                            parent.settings.width = Fixed(.01); // Hide scroll bar
+                            parent.settings.width = Fixed(0); // Hide scroll bar
                         }
                     case Never:
                         // Nothing
@@ -310,7 +312,7 @@ class ScrollBar extends NodeBase {
                             slider.settings.alignX = PercentLTLessFixed((pos/(max-min))*100, slider.size.w);
                         } else {
                             // Hide scrollbar
-                            parent.settings.height = Fixed(.01); // Hide scroll bar
+                            parent.settings.height = Fixed(0); // Hide scroll bar
                         }
                     case Never:
                         // Nothing

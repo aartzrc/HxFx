@@ -31,8 +31,8 @@ class BorderContainerWindow extends Window {
         bordered.settings.bgColor = kha.Color.fromFloats(.8,.8,.8,1);
 
         bordered.borderContainerSettings.borderColor = kha.Color.Black;
-        bordered.borderContainerSettings.borderWidth = 5;
-		bordered.borderContainerSettings.borderCornerRadius = 12;
+        //bordered.borderContainerSettings.borderWidth = 5;
+		//bordered.borderContainerSettings.borderCornerRadius = 12;
 
 		bordered.borderContainerSettings.resizeable = true;
 

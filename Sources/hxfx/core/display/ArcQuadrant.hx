@@ -28,6 +28,7 @@ class ArcQuadrant extends DisplayBase {
 
     override public function render(g2: Graphics): Void {
         if(color.A == 0) return; // Transparent, nothing to draw
+        if(radius == 0) return; // Too small, nothing to draw
 
 		if(radius <= 0) {
 			// No radius, just draw a rectangle of width/height
