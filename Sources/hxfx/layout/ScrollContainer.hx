@@ -100,8 +100,10 @@ class ScrollBar extends NodeBase {
     var orientation:Orientation;
     var container:ScrollContainer;
 
-    var lessArrow:AbsoluteContainer = new AbsoluteContainer();
-    var moreArrow:AbsoluteContainer = new AbsoluteContainer();
+    //var lessArrow:AbsoluteContainer = new AbsoluteContainer();
+    var lessArrow:BorderContainer = new BorderContainer();
+    //var moreArrow:AbsoluteContainer = new AbsoluteContainer();
+    var moreArrow:BorderContainer = new BorderContainer();
     var sliderFill:AbsoluteContainer = new AbsoluteContainer();
     //public var slider:AbsoluteContainer = new AbsoluteContainer();
     public var slider:BorderContainer = new BorderContainer();
@@ -220,25 +222,88 @@ class ScrollBar extends NodeBase {
         // Do some background so we can see
         //settings.bgColor = kha.Color.Green;
 
-        lessArrow.settings.bgColor = kha.Color.Blue;
+        lessArrow.settings.bgColor = kha.Color.fromFloats(0,0,0,.4);
+        lessArrow.borderContainerSettings.borderColor = kha.Color.Black;
         lessArrow.mouseSubscribe = true;
         lessArrow.parent = this;
 
-        moreArrow.settings.bgColor = kha.Color.Blue;
+        moreArrow.settings.bgColor = kha.Color.fromFloats(0,0,0,.4);
+        moreArrow.borderContainerSettings.borderColor = kha.Color.Black;
         moreArrow.mouseSubscribe = true;
         moreArrow.parent = this;
 
-        sliderFill.settings.bgColor = kha.Color.fromFloats(0,0,0,.3);
+        sliderFill.settings.bgColor = kha.Color.fromFloats(0,0,0,.1);
         sliderFill.mouseSubscribe = true;
         sliderFill.parent = this;
 
         slider.borderContainerSettings.borderColor = kha.Color.Black;
-        slider.settings.bgColor = kha.Color.fromFloats(0,0,0,.3);
+        slider.settings.bgColor = kha.Color.fromFloats(0,0,0,.2);
         slider.mouseSubscribe = true;
         slider.parent = sliderFill;
+        Bind.bind(slider.mouseData.b1down, _toggleDrag);
 
         Bind.bind(lessArrow.mouseData.b1down, _lessMouseDown);
         Bind.bind(moreArrow.mouseData.b1down, _moreMouseDown);
+    }
+
+    function _toggleDrag(from:Bool, to:Bool) {
+        if(to && slider.mouseData.mouseInBounds) {
+            switch(orientation) {
+                case Vertical:
+                    if(startSliderPos == null) {
+                        startSliderPos = sliderFill.mouseData.y;
+                        startScrollPos = pos;
+                    }
+                    Bind.bind(sliderFill.mouseData.y, _handleDrag);
+                case Horizontal:
+                    if(startSliderPos == null) {
+                        startSliderPos = sliderFill.mouseData.x;
+                        startScrollPos = pos;
+                    }
+                    Bind.bind(sliderFill.mouseData.x, _handleDrag);
+            }
+        } else {
+            switch(orientation) {
+                case Vertical:
+                    Bind.unbind(sliderFill.mouseData.y, _handleDrag);
+                case Horizontal:
+                    Bind.unbind(sliderFill.mouseData.x, _handleDrag);
+            }
+
+            if(!to) {
+                startSliderPos = null;
+            }
+        }
+    }
+
+    var startSliderPos:Float;
+    var startScrollPos:Float;
+    function _handleDrag(from:Float, to:Float) {
+        switch(orientation) {
+                case Vertical:
+                    // How far should slider move to match mouse
+                    var destY = startSliderPos - sliderFill.mouseData.y;
+                    // How should viewport pos move?
+                    var pixelRange = (sliderFill.size.h - slider.size.h);
+                    var posRange = (max-min);
+                    var ratio = posRange/ pixelRange;
+                    var newPos = destY * -ratio + startScrollPos;
+                    if(newPos<min) newPos = min;
+                    if(newPos>max) newPos = max;
+                    pos=newPos;
+                    // TODO: Wow.. that's a mess - rethink this
+                case Horizontal:
+                    // How far should slider move to match mouse
+                    var destX = startSliderPos - sliderFill.mouseData.x;
+                    // How should viewport pos move?
+                    var pixelRange = (sliderFill.size.w - slider.size.w);
+                    var posRange = (max-min);
+                    var ratio = posRange/ pixelRange;
+                    var newPos = destX * -ratio + startScrollPos;
+                    if(newPos<min) newPos = min;
+                    if(newPos>max) newPos = max;
+                    pos=newPos;
+            }
     }
 
     function showHideScrollBar(from:ScrollBarShow, to:ScrollBarShow) {

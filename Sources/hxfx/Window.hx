@@ -2,7 +2,9 @@ package hxfx;
 
 import kha.input.Mouse;
 import kha.input.Keyboard;
+#if js
 import js.Browser;
+#end
 
 /**
 Starting point of a HxFx application, create or extend this class to begin
